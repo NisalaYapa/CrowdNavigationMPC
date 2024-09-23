@@ -19,7 +19,7 @@ class NewMPCChanging(Policy):
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 7 # Fixed time horizon
+        self.horizon = 10 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -42,6 +42,8 @@ class NewMPCChanging(Policy):
         # Step 1: Predict future human positions over the time horizon using ORCA
         orca_policy = ORCAPlusAll()
         predicted_human_poses = orca_policy.predictAllForTimeHorizon(env_state, self.horizon)
+        
+        #logging.info(f"predict {predicted_human_poses}")
 
         # Step 2: Setup MPC using CasADi
         nx_r = 2  # Robot state: [px, py]
@@ -75,24 +77,35 @@ class NewMPCChanging(Policy):
 
         # Step 3: Cost function for goal deviation and control effort
         goal_pos = cs.MX([robot_state.gx, robot_state.gy])  # Goal position
-        Q_terminal = 1000
-        Q_goal = 1000    # Weight for goal deviation
-        Q_control = 1 # Weight for control inputs
+        Q_terminal = 100
+        Q_goal = 100   # Weight for goal deviation
+        Q_control = 30 # Weight for control inputs
+        Q_pref = 50
+        Q_human = 1
 
-        def cost_function(X_pred, U):
+        def cost_function(X_pred, U, human_states):
             cost = 0
             for t in range(self.horizon):
                 dist_to_goal = cs.sumsqr(X_pred[t] - goal_pos)  # Final state to goal
-                control_effort = cs.sum2(cs.sumsqr(U[:, t]-[0.4,0.4]))  # Sum of control efforts
-                cost += Q_goal * dist_to_goal + Q_control * control_effort
+                if t == 0:
+                    control_smooth = cs.sum2(cs.sumsqr(U[:, t]-u_current)) # Sum of control efforts
+                else:
+                    control_smooth = cs.sum2(cs.sumsqr(U[:, t]-U[:, t-1]))
+                    
+                control_pref = cs.sum2(cs.sumsqr(U[:, t])-0.5)
+                
+                for hum in human_states[t][1:]:
+                    human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
+                    dist_to_human_sqr = cs.sumsqr(X_pred[t] - human_pos)
+                    human_radius = hum[4]  # Human's radius
+                    cost -= Q_human*(dist_to_human_sqr - (human_radius + robot_radius + 0.01)**2)  # Neede to changed
+                cost += Q_goal * dist_to_goal + Q_control * control_smooth + control_pref*Q_pref
             dist_terminal = cs.sumsqr(X_pred[-1] - goal_pos)  # Final state to goal
             cost += Q_terminal * dist_terminal
             return cost
             
 
 
-
-        total_cost = cost_function(X_pred, U_opt)
 
         # Step 4: Collision avoidance constraints (humans)
         def collision_constraint(X_pred, human_states):
@@ -144,6 +157,8 @@ class NewMPCChanging(Policy):
                     constraints.append(dist_to_obstacle - (robot_radius + safety_margin))
 
             return constraints
+            
+        total_cost = cost_function(X_pred, U_opt,predicted_human_poses[0])
 
         # Add static obstacle constraints
         static_constraints = static_obstacle_constraint(X_pred, env_state.static_obs)
@@ -172,7 +187,8 @@ class NewMPCChanging(Policy):
             sol = opti.solve()
         except RuntimeError as e:
             logging.error(f"Solver failed with error: {e}")
-            return ActionXY(robot_state.vx / 2, robot_state.vy / 2)  # Return a safe default action
+            return ActionXY(0,0)
+            #return ActionXY(robot_state.vx / 2, robot_state.vy / 2)  # Return a safe default action
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])        

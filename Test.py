@@ -36,11 +36,13 @@ def get_scenario_name(args, env_config_file, policy_config, env, robot):
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         scenario_name = 'dwa_{:}_{:}'.format(env_id, args.num_humans)
-    elif 'orca_plus' in args.policy:
+    
+    elif 'ORCAPlusAll' in args.policy:
         save_dir = os.path.join(os.getcwd(), 'results_orca_plus', env_id)
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         scenario_name = 'orca_plus_{:}_{:}'.format(env_id, args.num_humans)
+        
     elif 'NewMPC' in args.policy:
         save_dir = os.path.join(os.getcwd(), 'results_NewMPC', env_id)
         if not os.path.isdir(save_dir):
@@ -77,10 +79,10 @@ def main():
     # Set the environment to hallway
     parser.add_argument('--square', default=False, action='store_true')
     parser.add_argument('--circle', default=False, action='store_true')
-    parser.add_argument('--hallway', default=False, action='store_true')
+    parser.add_argument('--hallway', default=True, action='store_true')
     parser.add_argument('--hallway_opdir', default=False, action='store_true')
     parser.add_argument('--hallway_static', default=False, action='store_true')
-    parser.add_argument('--hallway_bottleneck', default=True, action='store_true')
+    parser.add_argument('--hallway_bottleneck', default=False, action='store_true')
     parser.add_argument('--hallway_squeeze', default=False, action='store_true')
     
     args = parser.parse_args()
