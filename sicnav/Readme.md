@@ -29,4 +29,69 @@ use Test.py for change environment type (hallway, hallway_bottleneck)
 To see the orca predictions (for varification purpose)
 run python Test.py --policy ORCAPlusAll (this will create output.txt, make sure to clear or remove output.txt file before run this command)
 run Python Plot.py (this will save a video in the predictions folder. Make sure to change values in Plot.py like num of humans, time horizon, plot size according to env.config file mannally)
+```
+Available Policies:
+
+    campc: Implements the SICNav policy.
+    dwa: Uses the Dynamic Window Approach (DWA) for navigation.
+    orca_plus: Uses the ORCA policy for crowd navigation.
+    ORCAPlusAll: This policy creates an output.txt file containing ORCA-based future predictions for a few time steps ahead. However, these predictions are not used for navigation, and the ORCA-based navigation is applied instead.
+    NewMPCChanging: A policy under development that uses ORCAPlusAll for future predictions and controls the robot using MPC (Model Predictive Control).
+    NewMPC: Another development policy that also uses ORCAPlusAll for future predictions and controls the robot using MPC.
+
+Configuration
+
+The environment can be configured using the env.config file, where you can specify:
+
+    Number of humans: Number of human agents present in the simulation.
+    Environment size: Dimensions of the navigation environment.
+    Human radii: Radii of human agents for collision avoidance calculations.
+
+Changing the Environment Type
+
+You can switch between different environment types in Test.py. Supported environment types include:
+
+    hallway
+    hallway_bottleneck
+
+Example command to change the environment type:
+
+bash
+
+python Test.py --policy POLICY --env_type hallway
+
+Visualizing ORCA Predictions
+
+To verify ORCA predictions, follow these steps:
+
+    Generate ORCA Predictions:
+
+    Run this command to create the output.txt file containing future predictions using the ORCAPlusAll policy:
+
+    bash
+
+python Test.py --policy ORCAPlusAll
+
+    Note: Ensure the output.txt file is cleared or deleted before running this command to avoid overwriting issues.
+
+Plot and Save the Predictions:
+
+Run Plot.py to visualize the predictions and save a video in the predictions folder:
+
+bash
+
+    python Plot.py
+
+        Important: Update the values in Plot.py (such as the number of humans, time horizon, plot size) according to the env.config file manually.
+
+By following these steps, you can test different navigation policies, configure the environment, and visualize ORCA-based predictions.
+
+markdown
+
+
+This `README.md` file is formatted in Markdown syntax and includes:
+- Instructions on running policies.
+- Configuring the environment.
+- Visualizing ORCA predictions with the `Plot.py` script.
+- Code blocks are enclosed in triple backticks (` ``` `) for bash commands and notes.
 
