@@ -25,10 +25,10 @@ The following algorithms can be visualized by running the following command in t
 
 python simple_test.py --policy <policy>
 
---policy campc  :  collision avoidance MPC (SICNav)
---policy NewMPCChanging  :  our proposed MPC (developping)
---policy dwa  :  dynamic window  approch
---policy orca_plus  :  ORCA 
+- **--policy campc**  :  collision avoidance MPC (SICNav)
+- **--policy NewMPCChanging**  :  our proposed MPC (developping)
+- **--policy dwa**  :  dynamic window  approch
+- **--policy orca_plus**  :  ORCA 
 
 
 To train and visualize the Reinforcement Learning algorithms, SARL and RGL, please see the RL_nav/ subdirectory.
