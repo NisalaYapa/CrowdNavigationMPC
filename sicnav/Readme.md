@@ -61,9 +61,10 @@ python Plot.py
 ```
 Important: Update the values in Plot.py (such as the number of humans, time horizon, plot size) according to the env.config file manually.
 
-## Watch the Navigation Policies in Action
-
-[Click here to watch the video](sicnav/predictions/human_trajectories_with_radius_20240924_120250.mp4)
+<video width="640" height="480" controls>
+  <source src="sicnav/predictions/human_trajectories_with_radius_20240924_120250.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
 
 
 
