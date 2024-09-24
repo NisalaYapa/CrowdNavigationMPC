@@ -61,7 +61,13 @@ python Plot.py
 ```
 Important: Update the values in Plot.py (such as the number of humans, time horizon, plot size) according to the env.config file manually.
 
-https://github.com/NisalaYapa/CrowdNavigationMPC/blob/main/sicnav/predictions/human_trajectories_with_radius_20240924_120250.mp4
+## Watch the Navigation Policies in Action
+
+<video width="640" height="480" controls>
+  <source src="https://github.com/NisalaYapa/CrowdNavigationMPC/blob/main/sicnav/predictions/human_trajectories_with_radius_20240924_120250.mp4" type="video/mp4">
+  Your browser does not support the video tag.
+</video>
+
 
 
 By following these steps, you can test different navigation policies, configure the environment, and visualize ORCA-based predictions.
