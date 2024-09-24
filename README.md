@@ -1,4 +1,4 @@
-**Setup**
+## **Setup**
 
 In a conda environment with Python 3.8.13,
 
