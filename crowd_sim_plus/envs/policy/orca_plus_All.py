@@ -14,7 +14,7 @@ class ORCAPlusAll(ORCA):
 
     def configure(self, config, section='orca_plus'):
     
-        self.time_step = 0.1# Default time step
+        self.time_step = 0.25# Default time step
         try:
             self.time_step = config.getfloat('env', 'time_step')
         except:
@@ -84,7 +84,7 @@ class ORCAPlusAll(ORCA):
         self.last_state = state
 
         # Simulate for the time horizon
-        predicted_trajectories = self.predictAllForTimeHorizon(state, 10)
+        predicted_trajectories = self.predictAllForTimeHorizon(state, 8)
         
         # Open the file in append mode ('a')
         # Convert list to string before writing To visualize orca path prediction
@@ -104,7 +104,7 @@ class ORCAPlusAll(ORCA):
         """
         Function to get action array for robot and Humans using ORCA
         """
-        self.time_step = 0.1
+        self.time_step = 0.25
         
         self_state = state.self_state
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
@@ -184,6 +184,33 @@ class ORCAPlusAll(ORCA):
 
         current_state = state
         
+        
+        
+        
+        """
+        #For plotting the initial state of all agents. If you use this code segment change the time horizon of Plot.py to time_horizon + 1
+        
+        cur_state = []
+        cur_action = []
+
+        # Store the updated robot state (without goal info, since it may be ObservableState)
+        robot_current_state = (current_state.self_state.px, current_state.self_state.py, current_state.self_state.vx, current_state.self_state.vy, current_state.self_state.radius)
+        cur_state.append(robot_current_state)
+        rob_action = (current_state.self_state.vx, current_state.self_state.vy)
+        cur_action.append(rob_action)
+
+        # Update human states based on the predicted actions
+        for i, hum in enumerate(current_state.human_states):
+            # Update velocities dynamically at each time step
+            human_current_state = (hum.px, hum.py, hum.vx, hum.vy, hum.radius)
+            cur_state.append(human_current_state)
+            hum_action = (hum.vx, hum.vy)
+            cur_action.append(hum_action)
+            
+        predicted_states.append(cur_state)
+        predicted_actions.append(cur_action)
+        """
+        
         #logging.info(f"human state_current {current_state.human_states[0]}")
         
 
@@ -191,6 +218,8 @@ class ORCAPlusAll(ORCA):
         for t in range(time_horizon):
             # Get the actions for all agents at the current timestep using ORCA
             actions = self.predictAll(current_state)
+            logging.info(f"currentState {current_state.self_state.vx, current_state.self_state.vy}")
+            logging.info(f"actions {actions}")
 
             next_state = []
 
