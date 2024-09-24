@@ -1,7 +1,7 @@
 To run crowd navigation policies
 
 
-python Test.py --policy <POLICY>
+python Test.py --policy POLICY
 
 usable policies:
 campc - for SICNav policy
