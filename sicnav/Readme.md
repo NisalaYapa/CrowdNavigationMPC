@@ -51,7 +51,7 @@ python Test.py --policy ORCAPlusAll
 ```
 Note: Ensure the output.txt file is cleared or deleted before running this command to avoid overwriting issues.
 
-# *2. Plot and Save the Predictions:*
+# ***2. Plot and Save the Predictions:***
 
 Run Plot.py to visualize the predictions and save a video in the predictions folder:
 
