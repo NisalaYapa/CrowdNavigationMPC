@@ -41,7 +41,7 @@ You can switch between different environment types in Test.py. Supported environ
 ## **Visualizing ORCA Predictions**
 
 To verify ORCA predictions, follow these steps:
-## *1. Generate ORCA Predictions:*
+## **1. Generate ORCA Predictions:**
 
 Run this command to create the output.txt file containing future predictions using the ORCAPlusAll policy:
 
