@@ -1,4 +1,4 @@
-**Our CrowdNavigationMPC uses SICNav as a simulation setup [repo](https://github.com/sepsamavi/safe-interactive-crowdnav)**
+**Our CrowdNavigationMPC uses SICNav as a simulation setup [repo](https://github.com/sepsamavi/safe-interactive-crowdnav) | [paper](https://arxiv.org/abs/2310.10982)**
 
 ## **Setup**
 
