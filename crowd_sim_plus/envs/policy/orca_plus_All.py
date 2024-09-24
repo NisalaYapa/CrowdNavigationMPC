@@ -14,7 +14,7 @@ class ORCAPlusAll(ORCA):
 
     def configure(self, config, section='orca_plus'):
     
-        self.time_step = 0.1 # Default time step
+        self.time_step = 0.1# Default time step
         try:
             self.time_step = config.getfloat('env', 'time_step')
         except:
@@ -84,7 +84,16 @@ class ORCAPlusAll(ORCA):
         self.last_state = state
 
         # Simulate for the time horizon
-        #predicted_trajectories,_ = self.predictAllForTimeHorizon(state, 5)
+        predicted_trajectories = self.predictAllForTimeHorizon(state, 10)
+        
+        # Open the file in append mode ('a')
+        # Convert list to string before writing To visualize orca path prediction
+        with open('output.txt', 'a') as file:
+            file.write(str(predicted_trajectories[0]) + '\n')  # Convert list to string and append new line
+
+        #logging.info(f"predicted_trajectories{predicted_trajectories[0]}")
+        
+        
 
         self.sim = None  # Reset for SB3 saving
 
@@ -95,7 +104,7 @@ class ORCAPlusAll(ORCA):
         """
         Function to get action array for robot and Humans using ORCA
         """
-        self.time_step = 0.25
+        self.time_step = 0.1
         
         self_state = state.self_state
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
@@ -216,6 +225,8 @@ class ORCAPlusAll(ORCA):
             current_state = self.update_state_with_predicted(current_state, next_state)
             
         #logging.info(f"agents {predicted_states}")
+        
+        #logging.info(f"{predicted_states}")
             
         return predicted_states, predicted_actions
 
