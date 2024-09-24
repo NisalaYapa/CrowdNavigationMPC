@@ -43,9 +43,9 @@ Configuration
 
 The environment can be configured using the env.config file, where you can specify:
 
-    Number of humans: Number of human agents present in the simulation.
-    Environment size: Dimensions of the navigation environment.
-    Human radii: Radii of human agents for collision avoidance calculations.
+Number of humans: Number of human agents present in the simulation.
+Environment size: Dimensions of the navigation environment.
+Human radii: Radii of human agents for collision avoidance calculations.
 
 Changing the Environment Type
 
@@ -56,33 +56,37 @@ You can switch between different environment types in Test.py. Supported environ
 
 Example command to change the environment type:
 
-bash
+```bash
 
 python Test.py --policy POLICY --env_type hallway
+
+```
 
 Visualizing ORCA Predictions
 
 To verify ORCA predictions, follow these steps:
 
-    Generate ORCA Predictions:
+Generate ORCA Predictions:
 
-    Run this command to create the output.txt file containing future predictions using the ORCAPlusAll policy:
+Run this command to create the output.txt file containing future predictions using the ORCAPlusAll policy:
 
-    bash
+```bash
 
 python Test.py --policy ORCAPlusAll
+```
 
-    Note: Ensure the output.txt file is cleared or deleted before running this command to avoid overwriting issues.
+Note: Ensure the output.txt file is cleared or deleted before running this command to avoid overwriting issues.
 
 Plot and Save the Predictions:
 
 Run Plot.py to visualize the predictions and save a video in the predictions folder:
 
-bash
+```bash
 
     python Plot.py
+```
 
-        Important: Update the values in Plot.py (such as the number of humans, time horizon, plot size) according to the env.config file manually.
+Important: Update the values in Plot.py (such as the number of humans, time horizon, plot size) according to the env.config file manually.
 
 By following these steps, you can test different navigation policies, configure the environment, and visualize ORCA-based predictions.
 
