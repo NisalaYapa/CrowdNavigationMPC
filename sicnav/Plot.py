@@ -1,77 +1,85 @@
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.animation import FuncAnimation
+import matplotlib.animation as animation
 import re
+import numpy as np
+import datetime
+import os
 
-# Load future predictions from the extracted file
-with open('extracted_futures.txt', 'r') as file:
-    future_data = file.readlines()
+num_humans = 15 #env.config num_of_humans + 1
+time_horizon = 10 #ORCA plus all time horizon (in the predict funtion) 
+plot_x = 3 # environment width 2*plot_x
+plot_y = 3 # environment height 2*plot_y
 
-# Function to parse positions from the text file
-def parse_future_positions(data):
-    predictions_per_cycle = []
-    future_regex = r"Future \[(.*?)\]"
-    
-    for line in data:
-        match = re.findall(future_regex, line)
-        if match:
-            positions = eval(match[0])  # Convert string to list of tuples
-            predictions_per_cycle.append(positions)
-    return predictions_per_cycle
+def extract_data_from_file(filename):
+    data = []
 
-# Parse the future positions from the text file
-predictions_per_cycle = parse_future_positions(future_data)
+    with open(filename, 'r') as file:
+        for line in file:
+            line_data = re.findall(r'[-+]?\d*\.\d+e[-+]?\d+|[-+]?\d*\.\d+|[-+]?\d+', line)
+            float_values = [float(value) for value in line_data]
+            
+            human_positions = [[] for _ in range(num_humans)]
+            human_radii = []
 
-# Prepare the figure and axis limits
-fig, ax = plt.subplots()
-ax.set_xlim(-2, 2)
-ax.set_ylim(-2, 2)
+            for time_step in range(time_horizon):
+                for human_index in range(num_humans):
+                    index = (time_step * num_humans + human_index) * 5
+                    if index + 4 < len(float_values):
+                        px = float_values[index]
+                        py = float_values[index + 1]
+                        radius = float_values[index + 4]
+                        human_positions[human_index].append((px, py))
+                        if time_step == 0:
+                            human_radii.append(radius)
 
-# Plot objects for the humans' trajectories (lines) and start positions (dots)
-human_trajectories = [ax.plot([], [], label=f'Human {i+1}')[0] for i in range(5)]
-human_start_points = [ax.plot([], [], 'o', label=f'Start {i+1}')[0] for i in range(5)]
+            data.append((human_positions, human_radii))
+    return data
 
-# Initialize the animation
-def init():
-    for traj, start in zip(human_trajectories, human_start_points):
-        traj.set_data([], [])
-        start.set_data([], [])
-    return human_trajectories + human_start_points
+def plot_trajectories(data):
+    fig, ax = plt.subplots(figsize=(10, 10))
+    colors = plt.cm.hsv(np.linspace(0, 1, num_humans))
 
-# Update the animation: plot all timesteps at once, and mark start positions
-def update(frame):
-    # Clear the previous trajectories and start points
-    for traj, start in zip(human_trajectories, human_start_points):
-        traj.set_data([], [])
-        start.set_data([], [])
-    
-    # Plot all future predictions for the current time horizon at once
-    time_horizon = 10  # Time horizon to plot all predictions
-    cycle_start = frame * time_horizon
-    if cycle_start + time_horizon > len(predictions_per_cycle):
-        return human_trajectories + human_start_points  # End the animation if we run out of cycles
-    
-    for i in range(4):  # For each human
-        # Get the predicted trajectory for the time horizon
-        trajectory = [(predictions_per_cycle[t][i][0], predictions_per_cycle[t][i][1]) 
-                      for t in range(cycle_start, cycle_start + time_horizon)]
-        x_vals, y_vals = zip(*trajectory)  # Separate x and y coordinates
-        
-        # Plot the full trajectory
-        human_trajectories[i].set_data(x_vals, y_vals)
-        
-        # Mark the start position as a dot
-        human_start_points[i].set_data(x_vals[0], y_vals[0])
+    def update(frame):
+        ax.clear()
+        human_positions, human_radii = data[frame]
 
-    return human_trajectories + human_start_points
+        for human_index, positions in enumerate(human_positions):
+            x_coords = [pos[0] for pos in positions]
+            y_coords = [pos[1] for pos in positions]
+            ax.plot(x_coords, y_coords, marker='o', label=f'Human {human_index}', color=colors[human_index])
 
-# Create the animation, iterating over time horizons
-num_cycles = len(predictions_per_cycle) // 10 # Number of time horizons
-ani = FuncAnimation(fig, update, frames=num_cycles, init_func=init, blit=True, repeat=True)
+            for (px, py) in positions:
+                radius = human_radii[human_index]
+                circle = plt.Circle((px, py), radius, color=colors[human_index], alpha=0.2, fill=True)
+                ax.add_artist(circle)
 
-# Show the plot
-plt.legend()
-plt.xlabel('X position')
-plt.ylabel('Y position')
-plt.title('Predicted Human Trajectories with Start Positions')
-plt.show()
+        ax.set_xlabel('X position')
+        ax.set_ylabel('Y position')
+        ax.set_title('Human Agent Trajectories with Radius')
+        ax.legend()
+        ax.grid(True)
+        ax.axis('equal')
+
+        # Set fixed axis limits
+        ax.set_xlim(-plot_x, plot_x)
+        ax.set_ylim(-plot_y, plot_y)
+
+    ani = animation.FuncAnimation(fig, update, frames=len(data), repeat=False)
+
+    # Ensure the predictions folder exists
+    if not os.path.exists('predictions'):
+        os.makedirs('predictions')
+
+    # Create a unique filename with timestamp
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    filename = f'predictions/human_trajectories_with_radius_{timestamp}.mp4'
+    ani.save(filename, writer='ffmpeg', fps=1)
+
+    plt.show()
+
+# Example usage:
+filename = 'output.txt'
+data = extract_data_from_file(filename)
+
+# Plot the trajectories and save as MP4
+plot_trajectories(data)

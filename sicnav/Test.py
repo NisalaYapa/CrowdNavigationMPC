@@ -36,11 +36,13 @@ def get_scenario_name(args, env_config_file, policy_config, env, robot):
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         scenario_name = 'dwa_{:}_{:}'.format(env_id, args.num_humans)
-    elif 'orca_plus' in args.policy:
+    
+    elif 'ORCAPlusAll' in args.policy:
         save_dir = os.path.join(os.getcwd(), 'results_orca_plus', env_id)
         if not os.path.isdir(save_dir):
             os.makedirs(save_dir)
         scenario_name = 'orca_plus_{:}_{:}'.format(env_id, args.num_humans)
+        
     elif 'NewMPC' in args.policy:
         save_dir = os.path.join(os.getcwd(), 'results_NewMPC', env_id)
         if not os.path.isdir(save_dir):

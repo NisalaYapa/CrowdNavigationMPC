@@ -19,13 +19,12 @@ class NewMPCChanging(Policy):
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horiz = 5 # Time horizon
+        self.horizon = 10 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
 
     def predict(self, env_state):
-    
         human_states = []
         robot_state = env_state.self_state
         robot_radius = robot_state.radius
@@ -42,154 +41,158 @@ class NewMPCChanging(Policy):
         
         # Step 1: Predict future human positions over the time horizon using ORCA
         orca_policy = ORCAPlusAll()
-        time_horizon = 5
-        time_step = 0.1
+        predicted_human_poses = orca_policy.predictAllForTimeHorizon(env_state, self.horizon)
         
-        predicted_human_poses = orca_policy.predictAllForTimeHorizon(state, time_horizon)
-        #logging.info(f"predicted {predicted_human_poses}")
+        #logging.info(f"predict {predicted_human_poses}")
 
         # Step 2: Setup MPC using CasADi
-        nx_r = 2  # Robot state: [px, py, vx, vy]
+        nx_r = 2  # Robot state: [px, py]
         nu_r = 2  # Robot control inputs: [vx, vy]
         
-        # Define robot dynamics
-        def dynamics(x, u):
-            px = x[0]  # x-position
-            py = x[1]  # y-position
+        # Initial state and current velocity
+        x0 = cs.MX([robot_state.px, robot_state.py])  # Initial robot state
+        u_current = cs.MX([robot_state.vx, robot_state.vy])  # Current robot velocity
+
+        # Create Opti object
+        opti = cs.Opti()  # CasADi optimization problem
+        U_opt = opti.variable(nu_r, self.horizon)  # Decision variables for control inputs
+
+        # Define robot dynamics based on accumulated control inputs
+        def dynamics(x0, u_current, U):
+            states = []
+            states.append(x0)
+            
+            for t in range(self.horizon):
+                # Use U at each time step directly instead of summing them
+                u_t = U[:, t]
+                
+                # Update the robot's state using the control input at the current time step
+                next_state = states[t] + u_t * self.time_step
+                states.append(next_state)
+            
+            return states[1:]
+
+        # Get predicted robot states based on control inputs
+        X_pred = dynamics(x0, u_current, U_opt)
+
+        # Step 3: Cost function for goal deviation and control effort
+        goal_pos = cs.MX([robot_state.gx, robot_state.gy])  # Goal position
+        Q_terminal = 100
+        Q_goal = 100   # Weight for goal deviation
+        Q_control = 30 # Weight for control inputs
+        Q_pref = 50
+        Q_human = 1
+
+        def cost_function(X_pred, U, human_states):
+            cost = 0
+            for t in range(self.horizon):
+                dist_to_goal = cs.sumsqr(X_pred[t] - goal_pos)  # Final state to goal
+                if t == 0:
+                    control_smooth = cs.sum2(cs.sumsqr(U[:, t]-u_current)) # Sum of control efforts
+                else:
+                    control_smooth = cs.sum2(cs.sumsqr(U[:, t]-U[:, t-1]))
+                    
+                control_pref = cs.sum2(cs.sumsqr(U[:, t])-0.5)
+                
+                for hum in human_states[t][1:]:
+                    human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
+                    dist_to_human_sqr = cs.sumsqr(X_pred[t] - human_pos)
+                    human_radius = hum[4]  # Human's radius
+                    cost -= Q_human*(dist_to_human_sqr - (human_radius + robot_radius + 0.01)**2)  # Neede to changed
+                cost += Q_goal * dist_to_goal + Q_control * control_smooth + control_pref*Q_pref
+            dist_terminal = cs.sumsqr(X_pred[-1] - goal_pos)  # Final state to goal
+            cost += Q_terminal * dist_terminal
+            return cost
             
 
-            vx_cmd = u[0]  # control input for x-velocity
-            vy_cmd = u[1]  # control input for y-velocity
 
-            next_px = px + vx_cmd * self.time_step  # next x-position
-            next_py = py + vy_cmd * self.time_step  # next y-position
-
-            return cs.vertcat(next_px, next_py)  # next state
-
-
-        x = cs.MX.sym('x', nx_r)  # Current robot state
-        u = cs.MX.sym('u', nu_r)  # Robot control input
-        
-        # Dynamics function
-        dynamics_func = cs.Function('dynamics', [x, u], [dynamics(x, u)])
-
-
-        # Step 3: Cost function for goal deviation
-        # Step 3: Cost function for goal deviation and control
-        goal_pos = cs.MX([robot_state.gx, robot_state.gy])  # Goal position
-        Q_goal = 100    # Weight for goal deviation
-        Q_control = 10  # Weight for control inputs
-
-        def cost_function(x):
-            dist_to_goal = cs.norm_2(x[:2] - goal_pos)
-            #control_cost = cs.norm_2(u)  # Control cost is the magnitude of the control inputs (vx, vy)
-            return Q_goal * dist_to_goal #+ Q_control * control_cost
 
         # Step 4: Collision avoidance constraints (humans)
-        def collision_constraint(robot_state, human_states):
+        def collision_constraint(X_pred, human_states):
             constraints = []
-            robot_pos = cs.vertcat(robot_state[0], robot_state[1])  # Robot's position
-            
-            #logging.info(f"human States: {human_states}")
-            
-            for hum in human_states:
-                human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
-                #logging.info(f"human_pos size: {human_pos}")
-                
-                dist_to_human = cs.norm_2(robot_pos - human_pos)
-                #robot_radius = robot_state.radius # Robot's radius
-                human_radius = hum[4]  # Human's radius
-                #logging.info(f"Constraints {dist_to_human - (human_radius + robot_radius + 0.1)}")
-                
-                # Collision constraint
-                constraints.append(dist_to_human - (human_radius + robot_radius + 0.1))  
-
+            for t in range(self.horizon):
+                robot_pos = X_pred[t]
+                for hum in human_states[t][1:]:
+                    human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
+                    dist_to_human_sqr = cs.sumsqr(robot_pos - human_pos)
+                    human_radius = hum[4]  # Human's radius
+                    constraints.append(dist_to_human_sqr - (human_radius + robot_radius + 0.01)**2)  # Safety margin
             return constraints
 
-        # Step 6: Solve MPC over time horizon
-        opti = cs.Opti()  # CasADi optimization problem
-        
-        # Variables for states and control inputs over the horizon
-        X = opti.variable(nx_r, time_horizon + 1)  # States at each time step
-        U = opti.variable(nu_r, time_horizon)  # Control inputs at each time step
+        human_constraints = collision_constraint(X_pred, predicted_human_poses[0])
 
-        # Initial condition
-        opti.subject_to(X[:, 0] == [robot_state.px, robot_state.py])
+        # Add collision avoidance constraints for humans
+        for constr in human_constraints:
+            opti.subject_to(constr >= 0)  # No collisions
 
-        # Total cost
-        total_cost = 0
-        
-        for t in range(time_horizon):
-            # Predict future human states at time t
-            future_human_states = predicted_human_poses[0][t][1:]
-            opti.subject_to(U[0, t] <= 0.3)  # Upper bound for u[0]
-            opti.subject_to(U[0, t] >= -0.3)  # Lower bound for u[0]
-            opti.subject_to(U[1, t] <= 0.3)  # Upper bound for u[1]
-            opti.subject_to(U[1, t] >= -0.3)  # Lower bound for u[1]
-            #logging.info(f"future_human_states: {future_human_states}")
+        # Add static obstacle constraints
+        def static_obstacle_constraint(X_pred, static_obs):
+            constraints = []
             
-            #future_human_states = [[env_state.human_states[0].px,env_state.human_states[0].py,env_state.human_states[0].vx,env_state.human_states[0].vy,env_state.human_states[0].radius]]
-            
-           
-            
-            
-            
-            
-            # Add goal deviation cost
-            
-            # Add goal deviation cost
-            total_cost += cost_function(X[:, t])
+            for t in range(self.horizon):
+                robot_state = X_pred[t]
+                robot_pos = cs.vertcat(robot_state[0], robot_state[1])  # Robot's position
 
-            # Add control cost
-            if t == 0:
-                total_cost += cs.norm_2(U[:, t] - [robot_state.vx, robot_state.vy])
-            else:
-                total_cost += cs.norm_2(U[:, t] - U[:, t-1])  # Compare current control with previous control
+                for obs in static_obs:
+                    start_pos = cs.vertcat(obs[0][0], obs[0][1])  # Start position of the line segment
+                    end_pos = cs.vertcat(obs[1][0], obs[1][1])  # End position of the line segment
 
-                        
+                    # Vector from start to end of the line segment
+                    obs_vec = end_pos - start_pos
+                    # Vector from start to robot position
+                    robot_to_start = robot_pos - start_pos
 
-            # Add collision avoidance constraints
-            human_constraints = collision_constraint(X[:, t], future_human_states)
+                    # Project the robot position onto the line segment and clamp between [0, 1]
+                    t = cs.dot(robot_to_start, obs_vec) / cs.dot(obs_vec, obs_vec)
+                    t_clamped = cs.fmax(0, cs.fmin(1, t))  # Clamps t to the segment bounds
+
+                    # Find the closest point on the segment
+                    closest_point = start_pos + t_clamped * obs_vec
+
+                    # Calculate the distance from the robot to the closest point on the segment
+                    dist_to_obstacle = cs.norm_2(robot_pos - closest_point)
+
+                    # Add collision constraint to maintain a safe distance
+                    safety_margin = 0.01  # Safety margin for robot radius
+                    constraints.append(dist_to_obstacle - (robot_radius + safety_margin))
+
+            return constraints
             
-            
-            for constr in human_constraints:
-                opti.subject_to(constr >= 0)  # No collisions
+        total_cost = cost_function(X_pred, U_opt,predicted_human_poses[0])
 
-            # Add dynamics constraints for the next state
-            opti.subject_to(X[:, t + 1] == dynamics_func(X[:, t], U[:, t]))
+        # Add static obstacle constraints
+        static_constraints = static_obstacle_constraint(X_pred, env_state.static_obs)
+        for constr in static_constraints:
+            opti.subject_to(constr >= 0)  # No collisions with static obstacles
 
         # Minimize total cost
         opti.minimize(total_cost)
-        
+
+        # Add control bounds
+        opti.subject_to(U_opt[0, :] <= 0.5)  # Upper bound for vx
+        opti.subject_to(U_opt[0, :] >= -0.5)  # Lower bound for vx
+        opti.subject_to(U_opt[1, :] <= 0.5)  # Upper bound for vy
+        opti.subject_to(U_opt[1, :] >= -0.5)  # Lower bound for vy
+
         opti.solver('ipopt', {
-            'ipopt.max_iter': 100,        # Increase maximum number of iterations
-            'ipopt.tol': 1e-3,             # Increase tolerance to allow faster convergence
-            'ipopt.acceptable_tol': 1e-2,  # Less strict acceptance tolerance
-            'ipopt.acceptable_iter': 10,   # Accept solution after fewer iterations
-            'ipopt.print_level': 0,        # Suppress IPOPT output
+            'ipopt.max_iter': 100,
+            'ipopt.tol': 1e-3,
+            'ipopt.acceptable_tol': 1e-2,
+            'ipopt.acceptable_iter': 10,
+            'ipopt.print_level': 0,
             'print_time': False
         })
 
-      
         try:
             sol = opti.solve()
         except RuntimeError as e:
-            #logging.error(f"Solver failed with error: {e}")
-            #logging.info(f"Initial state: {opti.debug.value(X[:, 0])}")
-            #logging.info(f"Control input: {opti.debug.value(U[:, 0])}")
-            return ActionXY(predicted_human_poses[0][0][0][2],predicted_human_poses[0][0][0][3])  
-            #return ActionXY(robot_state.vx/2, robot_state.vy/2) # Return a safe default action in case of failure
-            #return ActionXY(0,0)
+            logging.error(f"Solver failed with error: {e}")
+            return ActionXY(0,0)
+            #return ActionXY(robot_state.vx / 2, robot_state.vy / 2)  # Return a safe default action
 
         # Get the optimal control input for the first step
-        u_mpc = sol.value(U[:, 0])        
-        # Generate action
-        
-        logging.info(f"Generated {sol.value(U)}")
-        logging.info(f"Generated {u_mpc}")
-        
+        u_mpc = sol.value(U_opt[:, 0])        
         action = ActionXY(u_mpc[0], u_mpc[1])
-        #action = ActionXY(0,1)
-        logging.info(f"Generated action: {action}")
 
+        logging.info(f"Generated action: {action}")
         return action  # Return the optimal control action
