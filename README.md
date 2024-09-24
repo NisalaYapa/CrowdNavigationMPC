@@ -19,7 +19,7 @@ pip install -e <path-to-Python-RVO2-dir>/Python-RVO2/
 
 (Recommended) Install HSL to use advanced solvers in IPOPT, the settings that we use in campc.py make use of a linear solver from HSL, however the code in this repo will work with the default IPOPT settings as well. Instructions: https://github.com/casadi/casadi/wiki/Obtaining-HSL.
 
-Testing Crowd Navigation Algorithms
+## **Testing Crowd Navigation Algorithms**
 
 The following algorithms can be visualized by running the following command in the sicnav/ directory:
 
@@ -33,7 +33,7 @@ python simple_test.py --policy <policy>
 
 To train and visualize the Reinforcement Learning algorithms, SARL and RGL, please see the RL_nav/ subdirectory.
 
-CrowdSimPlus Simulator
+## **CrowdSimPlus Simulator**
 
 CrowdSimPlus is based on OpenAI gym and is an extension of CrowdSim (Repo, Paper), with the follwing added features:
 
