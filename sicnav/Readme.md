@@ -8,7 +8,7 @@ To run a navigation policy, use the following command:
 
 ```bash
 python Test.py --policy POLICY
-
+```
 
 To run crowd navigation policies
 
@@ -29,7 +29,7 @@ use Test.py for change environment type (hallway, hallway_bottleneck)
 To see the orca predictions (for varification purpose)
 run python Test.py --policy ORCAPlusAll (this will create output.txt, make sure to clear or remove output.txt file before run this command)
 run Python Plot.py (this will save a video in the predictions folder. Make sure to change values in Plot.py like num of humans, time horizon, plot size according to env.config file mannally)
-```
+
 Available Policies:
 
     campc: Implements the SICNav policy.
@@ -86,12 +86,4 @@ bash
 
 By following these steps, you can test different navigation policies, configure the environment, and visualize ORCA-based predictions.
 
-markdown
-
-
-This `README.md` file is formatted in Markdown syntax and includes:
-- Instructions on running policies.
-- Configuring the environment.
-- Visualizing ORCA predictions with the `Plot.py` script.
-- Code blocks are enclosed in triple backticks (` ``` `) for bash commands and notes.
 
