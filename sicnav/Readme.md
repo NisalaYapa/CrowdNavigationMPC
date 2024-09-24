@@ -1,7 +1,3 @@
-Here’s the README.md file with properly formatted Markdown syntax that uses bold, headings, and lists for improved readability:
-
-markdown
-
 # **Crowd Navigation Policies**
 
 This project provides several **crowd navigation policies** that can be tested using Python scripts. Below, you’ll find details on how to **run the policies**, **configure the environment**, and **visualize predictions**.
