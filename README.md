@@ -37,7 +37,7 @@ To train and visualize the Reinforcement Learning algorithms, SARL and RGL, plea
 
 ## **CrowdSimPlus Simulator**
 
-CrowdSimPlus is based on OpenAI gym and is an extension of CrowdSim [repo](https://github.com/vita-epfl/CrowdNav), Paper), with the follwing added features:
+CrowdSimPlus is based on OpenAI gym and is an extension of CrowdSim [repo](https://github.com/vita-epfl/CrowdNav)), with the follwing added features:
 
 Static obstacles to allow for more realistic dense scenarios.
 Social Forces Model (SFM) policy to simulate human agents, in addition to the original Optimal Reciprocal Collision Avoidance (ORCA) policy. These policies can be found under crowd_sim_plus.envs.policy.
