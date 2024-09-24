@@ -1,3 +1,5 @@
+**Our CrowdNavigationMPC uses SICNav as a simulation setup [repo](https://github.com/sepsamavi/safe-interactive-crowdnav)**
+
 ## **Setup**
 
 In a conda environment with Python 3.8.13,
