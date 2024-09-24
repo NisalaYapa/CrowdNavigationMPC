@@ -68,6 +68,8 @@ Important: Update the values in Plot.py (such as the number of humans, time hori
   Your browser does not support the video tag.
 </video>
 
+"https://github.com/NisalaYapa/CrowdNavigationMPC/blob/main/sicnav/predictions/human_trajectories_with_radius_20240924_120250.mp4"
+
 
 
 By following these steps, you can test different navigation policies, configure the environment, and visualize ORCA-based predictions.
