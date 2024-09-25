@@ -4,13 +4,14 @@ import logging
 from crowd_sim_plus.envs.policy.policy import Policy
 from crowd_sim_plus.envs.policy.orca_plus_All import ORCAPlusAll
 from crowd_sim_plus.envs.utils.state_plus import FullState, FullyObservableJointState
-from crowd_sim_plus.envs.utils.action import ActionXY
+from crowd_sim_plus.envs.utils.action import ActionXY, ActionRot
 
 class NewMPCChanging(Policy):
 
     def __init__(self):
         super().__init__()
         self.trainable = False
+        #self.kinematics = 'unicycle'
         self.kinematics = 'holonomic'
         self.multiagent_training = True
         
@@ -19,7 +20,7 @@ class NewMPCChanging(Policy):
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 10 # Fixed time horizon
+        self.horizon = 2 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -177,7 +178,7 @@ class NewMPCChanging(Policy):
         opti.solver('ipopt', {
             'ipopt.max_iter': 100,
             'ipopt.tol': 1e-3,
-            'ipopt.acceptable_tol': 1e-2,
+            'ipopt.acceptable_tol': 1e-3,
             'ipopt.acceptable_iter': 10,
             'ipopt.print_level': 0,
             'print_time': False
@@ -188,11 +189,13 @@ class NewMPCChanging(Policy):
         except RuntimeError as e:
             logging.error(f"Solver failed with error: {e}")
             return ActionXY(0,0)
+            #return ActionRot(0,0)
             #return ActionXY(robot_state.vx / 2, robot_state.vy / 2)  # Return a safe default action
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])        
         action = ActionXY(u_mpc[0], u_mpc[1])
+        #action = ActionRot(np.sqrt(u_mpc[0]**2+ u_mpc[1]**2),np.arctan2(u_mpc[1],u_mpc[0])-robot_state.theta)
 
         logging.info(f"Generated action: {action}")
         return action  # Return the optimal control action
