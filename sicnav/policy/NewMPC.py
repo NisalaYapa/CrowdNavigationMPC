@@ -18,7 +18,7 @@ class NewMPC(Policy):
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 2 # Fixed time horizon
+        self.horizon = 5 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -88,9 +88,9 @@ class NewMPC(Policy):
         goal_pos = cs.MX([robot_state.gx, robot_state.gy])
 
         # Step 3: Cost function for goal deviation and control effort
-        Q_terminal = 200
-        Q_goal = 200   # Weight for goal deviation
-        Q_control = 10 # Weight for control inputs
+        Q_terminal = 100
+        Q_goal = 100   # Weight for goal deviation
+        Q_control = 20 # Weight for control inputs
         Q_pref = 10
         Q_human = 1
 
@@ -174,19 +174,22 @@ class NewMPC(Policy):
         static_constraints = static_obstacle_constraint(X_pred, env_state.static_obs)
         for constr in static_constraints:
             opti.subject_to(constr >= 0)  # No collisions with static obstacles
+            
+        
+        # Add control bounds
+        opti.subject_to(U_opt[0, :] <= 0.5)  # Upper bound for v
+        opti.subject_to(U_opt[0, :] >= -0.5)  # Lower bound for v
 
         # Minimize total cost
         opti.minimize(total_cost)
 
-        # Add control bounds
-        opti.subject_to(U_opt[0, :] <= 0.5)  # Upper bound for v
-        opti.subject_to(U_opt[0, :] >= -0.5)  # Lower bound for v
+        
 
         # Set up the solver
         opti.solver('ipopt', {
             'ipopt.max_iter': 5000,
             'ipopt.tol': 1e-3,
-            'ipopt.acceptable_tol': 1e-1,
+            'ipopt.acceptable_tol': 1e-2,
             'ipopt.acceptable_iter': 10,
             'ipopt.print_level': 0,
             'print_time': False
@@ -201,7 +204,7 @@ class NewMPC(Policy):
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])    
-        action = ActionRot(u_mpc[0], u_mpc[1] * self.time_step)
+        action = ActionRot(u_mpc[0], u_mpc[1]*self.time_step)
 
         logging.info(f"Generated action: {action}")
         return action  # Return the optimal control action
