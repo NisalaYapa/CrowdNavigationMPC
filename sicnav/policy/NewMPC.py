@@ -14,11 +14,11 @@ class NewMPC(Policy):
         self.multiagent_training = True
         
         # Environment-related variables
-        self.time_step = 0.1  # Time step for MPC
+        self.time_step = 0.25  # Time step for MPC
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 5 # Fixed time horizon
+        self.horizon = 7 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -89,10 +89,10 @@ class NewMPC(Policy):
 
         # Step 3: Cost function for goal deviation and control effort
         Q_terminal = 100
-        Q_goal = 100   # Weight for goal deviation
-        Q_control = 20 # Weight for control inputs
-        Q_pref = 10
-        Q_human = 1
+        Q_goal = 50   # Weight for goal deviation
+        Q_control = 5 # Weight for control inputs
+        Q_pref = 50
+ 
 
         def cost_function(X_pred, U, human_states):
             cost = 0
@@ -102,20 +102,13 @@ class NewMPC(Policy):
                 # Penalize control inputs (mainly smoothness in omega)
                 if t > 0:
                     # Penalize change in omega between consecutive time steps
-                    control_smooth = cs.sumsqr(U[1, t] - U[1, t - 1])
+                    control_smooth = cs.sumsqr(U[1, t])# - U[1, t - 1])
                     control_pref = cs.sumsqr(U[0, t] - U[0, t-1])  # Prefer certain velocity
                 else:
-                    control_smooth = cs.sumsqr(U[1, t] - robot_state.omega)
+                    control_smooth = cs.sumsqr(U[1, t])# - robot_state.omega)
                 
                     current_velocity = cs.vertcat(robot_state.vx, robot_state.vy)
                     control_pref = cs.sumsqr(U[0, t] - cs.sumsqr(current_velocity))
-                    
-                # Add human avoidance cost
-                for hum in human_states[t][1:]:
-                    human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
-                    dist_to_human_sqr = cs.sumsqr(X_pred[t][:2] - human_pos)
-                    human_radius = hum[4]  # Human's radius
-                    cost -= Q_human * (dist_to_human_sqr - (human_radius + robot_radius + 0.01) ** 2)  # Collision penalty
 
                 cost += Q_goal * dist_to_goal + Q_control * control_smooth + control_pref * Q_pref
             
@@ -147,26 +140,32 @@ class NewMPC(Policy):
         def static_obstacle_constraint(X_pred, static_obs):
             constraints = []
             
-            for t in range(self.horizon):
-                robot_pos = cs.vertcat(X_pred[t][0], X_pred[t][1])  # Robot's position
+            for step in range(self.horizon):
+                robot_pos = cs.vertcat(X_pred[step][0], X_pred[step][1])  # Robot's position at step
 
                 for obs in static_obs:
                     start_pos = cs.vertcat(obs[0][0], obs[0][1])  # Start position of the line segment
-                    end_pos = cs.vertcat(obs[1][0], obs[1][1])  # End position of the line segment
+                    end_pos = cs.vertcat(obs[1][0], obs[1][1])    # End position of the line segment
 
                     obs_vec = end_pos - start_pos
                     robot_to_start = robot_pos - start_pos
 
-                    t = cs.dot(robot_to_start, obs_vec) / cs.dot(obs_vec, obs_vec)
-                    t_clamped = cs.fmax(0, cs.fmin(1, t))  # Clamps t to the segment bounds
+                    # Parametric distance along the segment (dot product projection)
+                    t_param = cs.dot(robot_to_start, obs_vec) / cs.dot(obs_vec, obs_vec)
+                    t_clamped = cs.fmax(0, cs.fmin(1, t_param))  # Clamp t_param to [0, 1]
 
+                    # Closest point on the line segment to the robot
                     closest_point = start_pos + t_clamped * obs_vec
+
+                    # Euclidean distance to the closest point
                     dist_to_obstacle = cs.norm_2(robot_pos - closest_point)
 
-                    safety_margin = 0.01  # Safety margin for robot radius
+                    # Safety margin for robot radius
+                    safety_margin = 0.01  
                     constraints.append(dist_to_obstacle - (robot_radius + safety_margin))
 
             return constraints
+
 
         total_cost = cost_function(X_pred, U_opt, predicted_human_poses[0])
 
@@ -178,7 +177,7 @@ class NewMPC(Policy):
         
         # Add control bounds
         opti.subject_to(U_opt[0, :] <= 0.5)  # Upper bound for v
-        opti.subject_to(U_opt[0, :] >= -0.5)  # Lower bound for v
+        opti.subject_to(U_opt[0, :] >= 0)  # Lower bound for v
 
         # Minimize total cost
         opti.minimize(total_cost)
@@ -205,6 +204,7 @@ class NewMPC(Policy):
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])    
         action = ActionRot(u_mpc[0], u_mpc[1]*self.time_step)
+        #action = ActionRot(0, 3.14)
 
         logging.info(f"Generated action: {action}")
         return action  # Return the optimal control action
