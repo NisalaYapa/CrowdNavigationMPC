@@ -14,11 +14,11 @@ class NewMPC(Policy):
         self.multiagent_training = True
         
         # Environment-related variables
-        self.time_step = 0.25  # Time step for MPC
+        self.time_step = 0.1  # Time step for MPC
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 7 # Fixed time horizon
+        self.horizon = 3 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -88,10 +88,11 @@ class NewMPC(Policy):
         goal_pos = cs.MX([robot_state.gx, robot_state.gy])
 
         # Step 3: Cost function for goal deviation and control effort
-        Q_terminal = 100
-        Q_goal = 50   # Weight for goal deviation
-        Q_control = 5 # Weight for control inputs
-        Q_pref = 50
+        Q_goal = 300  # Medium priority to reach the goal
+        Q_control = 30 # Moderate weight for smooth control inputs
+        Q_pref = 10    # Medium preference for stable velocity
+        Q_terminal = 300 # Strong weight to reach the goal at the terminal state
+        Q_human = 5
  
 
         def cost_function(X_pred, U, human_states):
@@ -109,6 +110,12 @@ class NewMPC(Policy):
                 
                     current_velocity = cs.vertcat(robot_state.vx, robot_state.vy)
                     control_pref = cs.sumsqr(U[0, t] - cs.sumsqr(current_velocity))
+                
+                for hum in human_states[t][1:]:
+                    human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
+                    dist_to_human_sqr = cs.sumsqr(X_pred[t][:2] - human_pos)
+                    human_radius = hum[4]  # Human's radius
+                    cost -= Q_human*(dist_to_human_sqr - (human_radius + robot_radius + 0.05)**2)  
 
                 cost += Q_goal * dist_to_goal + Q_control * control_smooth + control_pref * Q_pref
             
@@ -127,7 +134,7 @@ class NewMPC(Policy):
                     human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
                     dist_to_human_sqr = cs.sumsqr(robot_pos - human_pos)
                     human_radius = hum[4]  # Human's radius
-                    constraints.append(dist_to_human_sqr - (human_radius + robot_radius + 0.01) ** 2)  # Safety margin
+                    constraints.append(dist_to_human_sqr - (human_radius + robot_radius + 0.08) ** 2)  # Safety margin
             return constraints
 
         human_constraints = collision_constraint(X_pred, predicted_human_poses[0])
@@ -161,7 +168,7 @@ class NewMPC(Policy):
                     dist_to_obstacle = cs.norm_2(robot_pos - closest_point)
 
                     # Safety margin for robot radius
-                    safety_margin = 0.01  
+                    safety_margin = 0.08
                     constraints.append(dist_to_obstacle - (robot_radius + safety_margin))
 
             return constraints
@@ -176,8 +183,9 @@ class NewMPC(Policy):
             
         
         # Add control bounds
-        opti.subject_to(U_opt[0, :] <= 0.5)  # Upper bound for v
+        opti.subject_to(U_opt[0, :] <= 1)  # Upper bound for v
         opti.subject_to(U_opt[0, :] >= 0)  # Lower bound for v
+        
 
         # Minimize total cost
         opti.minimize(total_cost)
@@ -186,7 +194,7 @@ class NewMPC(Policy):
 
         # Set up the solver
         opti.solver('ipopt', {
-            'ipopt.max_iter': 5000,
+            'ipopt.max_iter': 500,
             'ipopt.tol': 1e-3,
             'ipopt.acceptable_tol': 1e-2,
             'ipopt.acceptable_iter': 10,
@@ -203,7 +211,7 @@ class NewMPC(Policy):
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])    
-        action = ActionRot(u_mpc[0], u_mpc[1]*self.time_step)
+        action = ActionRot(u_mpc[0], u_mpc[1])
         #action = ActionRot(0, 3.14)
 
         logging.info(f"Generated action: {action}")
