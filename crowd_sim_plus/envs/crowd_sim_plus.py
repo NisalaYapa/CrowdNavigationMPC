@@ -527,6 +527,7 @@ class CrowdSimPlus(gym.Env):
             if self.randomize_attributes:
                 # if sampling random attributes, only set v_pref randomly, not radius
                 human.v_pref = rng.uniform(0.5, 1.5)
+                human.radius = rng.uniform(0.15, 0.25)
 
             # Decide whether the human is travelling up or down (y dir)
             if rng.random() < 0.15:
