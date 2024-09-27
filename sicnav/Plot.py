@@ -5,8 +5,8 @@ import numpy as np
 import datetime
 import os
 
-num_humans = 15 #env.config num_of_humans + 1
-time_horizon = 10 #ORCA plus all time horizon (in the predict funtion) 
+num_humans = 10 #env.config num_of_humans + 1
+time_horizon = 8 #ORCA plus all time horizon (in the predict funtion) 
 plot_x = 3 # environment width 2*plot_x
 plot_y = 3 # environment height 2*plot_y
 

@@ -166,14 +166,16 @@ class NewMPCChanging(Policy):
         for constr in static_constraints:
             opti.subject_to(constr >= 0)  # No collisions with static obstacles
 
-        # Minimize total cost
-        opti.minimize(total_cost)
 
         # Add control bounds
         opti.subject_to(U_opt[0, :] <= 0.5)  # Upper bound for vx
         opti.subject_to(U_opt[0, :] >= -0.5)  # Lower bound for vx
         opti.subject_to(U_opt[1, :] <= 0.5)  # Upper bound for vy
         opti.subject_to(U_opt[1, :] >= -0.5)  # Lower bound for vy
+
+        
+        # Minimize total cost
+        opti.minimize(total_cost)
 
         opti.solver('ipopt', {
             'ipopt.max_iter': 100,
