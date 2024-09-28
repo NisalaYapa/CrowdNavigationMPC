@@ -20,20 +20,36 @@ class NewMPCReal():
         human_states = []
         robot_state = env_state.self_state
         robot_radius = robot_state.radius
-        
-        if robot_state.omega == None:
+
+        if robot_state.omega is None:
             robot_state.omega = 0
+
+        # Convert robot_state (of type SelfState) to FullState
+        robot_full_state = FullState(
+            px=robot_state.px, 
+            py=robot_state.py, 
+            vx=robot_state.vx, 
+            vy=robot_state.vy, 
+            radius=robot_state.radius, 
+            gx=robot_state.gx, 
+            gy=robot_state.gy, 
+            v_pref=robot_state.v_pref, 
+            theta=robot_state.theta, 
+            omega=robot_state.omega
+        )
 
         for hum in env_state.human_states:               
             gx = hum.px + hum.vx * 2
             gy = hum.py + hum.vy * 2
             hum_state = FullState(px=hum.px, py=hum.py, vx=hum.vx, vy=hum.vy, 
                                   gx=gx, gy=gy, v_pref=self.human_max_speed, 
-                                  theta=np.arctan2(hum.vy, hum.vx), radius=hum.radius)                    
+                                  theta=np.arctan2(hum.vy, hum.vx), radius=hum.radius, omega=None)                    
             human_states.append(hum_state)
 
-        state = FullyObservableJointState(self_state=robot_state, human_states=human_states, static_obs=env_state.static_obs)
-        
+        # Create a FullyObservableJointState with the new robot_full_state
+        state = FullyObservableJointState(self_state=robot_full_state, human_states=human_states, static_obs=env_state.static_obs)
+
+            
         # Step 1: Predict future human positions over the time horizon using ORCA
         orca_policy = ORCAPlusAll()
         predicted_human_poses = orca_policy.predictAllForTimeHorizon(env_state, self.horizon)

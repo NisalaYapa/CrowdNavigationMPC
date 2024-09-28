@@ -1,6 +1,8 @@
 import logging
 import numpy as np
 from orca import ORCA
+import rvo2
+from state_plus import *
 
 
 class ORCAPlusAll(ORCA):
@@ -156,7 +158,7 @@ class ORCAPlusAll(ORCA):
         self.sim.doStep()
         
         
-        action = ActionXY(*self.sim.getAgentVelocity(0))
+    
         
         action_array = []
         

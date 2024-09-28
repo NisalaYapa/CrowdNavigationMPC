@@ -16,6 +16,10 @@ class SelfState:
         self.gy = gy  # Goal position y
         self.radius = radius  # Robot's radius
         self.v_pref = v_pref  # Preferred velocity
+        
+        self.position = (self.px, self.py)
+        self.goal_position = (self.gx, self.gy)
+        self.velocity = (self.vx, self.vy)
 
 
 class HumanState:
@@ -31,6 +35,10 @@ class HumanState:
         self.gy = gy  # Goal position y
         self.radius = radius  # Human's radius
         self.v_pref = v_pref  # Preferred velocity
+        
+        self.position = (self.px, self.py)
+        self.goal_position = (self.gx, self.gy)
+        self.velocity = (self.vx, self.vy)
 
 
 class EnvState:
@@ -66,6 +74,8 @@ def main():
 
     # For example, append an action here based on the environment state
     action = None  # Example action as a tuple of velocity and angular velocity
+    mpc = NewMPCReal()
+    action = mpc.predict(state)
     
     
     
