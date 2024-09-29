@@ -8,7 +8,7 @@ import numpy as np
 import logging
 from .NewMPCReal import NewMPCReal
 from time import sleep 
-
+from smrr_interfaces.msg import Entities
 
 # Define SelfState class
 class SelfState:
