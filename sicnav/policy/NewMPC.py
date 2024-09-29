@@ -14,7 +14,7 @@ class NewMPC(Policy):
         self.multiagent_training = True
         
         # Environment-related variables
-        self.time_step = 0.1  # Time step for MPC
+        self.time_step = 0.25  # Time step for MPC
         self.human_max_speed = 1
         
         # MPC-related variables
@@ -211,7 +211,7 @@ class NewMPC(Policy):
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])    
-        action = ActionRot(u_mpc[0], u_mpc[1])
+        action = ActionRot(u_mpc[0], u_mpc[1]*self.time_step)
         #action = ActionRot(0, 3.14)
 
         logging.info(f"Generated action: {action}")

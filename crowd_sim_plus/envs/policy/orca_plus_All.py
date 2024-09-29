@@ -218,8 +218,8 @@ class ORCAPlusAll(ORCA):
         for t in range(time_horizon):
             # Get the actions for all agents at the current timestep using ORCA
             actions = self.predictAll(current_state)
-            logging.info(f"currentState {current_state.self_state.vx, current_state.self_state.vy}")
-            logging.info(f"actions {actions}")
+            #logging.info(f"currentState {current_state.self_state.vx, current_state.self_state.vy}")
+            #logging.info(f"actions {actions}")
 
             next_state = []
 
@@ -273,7 +273,7 @@ class ORCAPlusAll(ORCA):
         current_state.self_state.py = predicted_state[0][1]
         current_state.self_state.vx = predicted_state[0][2]
         current_state.self_state.vy = predicted_state[0][3]
-        #current_state.self_state.theta = np.arctan2(predicted_state[0][3], predicted_state[0][2])
+        current_state.self_state.theta = np.arctan2(predicted_state[0][3], predicted_state[0][2])
         #current_state.self_state.radius = current_state.self_state.radius
         #current_state.self_state.gx = current_state.self_state.gx
         #current_state.self_state.gy = current_state.self_state.gy
@@ -284,7 +284,7 @@ class ORCAPlusAll(ORCA):
             current_state.human_states[i].py = predicted_state[i+1][1]
             current_state.human_states[i].vx = predicted_state[i+1][2]
             current_state.human_states[i].vy = predicted_state[i+1][3]
-            #current_state.human_states[i].theta = np.arctan2(predicted_state[i+1][3], predicted_state[i+1][2])
+            current_state.human_states[i].theta = np.arctan2(predicted_state[i+1][3], predicted_state[i+1][2])
             #current_state.human_states[i].radius = current_state.self_state.radius
 
             
