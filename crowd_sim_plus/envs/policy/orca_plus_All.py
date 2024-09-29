@@ -14,7 +14,7 @@ class ORCAPlusAll(ORCA):
 
     def configure(self, config, section='orca_plus'):
     
-        self.time_step = 0.25# Default time step
+        self.time_step = 0.1# Default time step
         try:
             self.time_step = config.getfloat('env', 'time_step')
         except:
@@ -104,7 +104,7 @@ class ORCAPlusAll(ORCA):
         """
         Function to get action array for robot and Humans using ORCA
         """
-        self.time_step = 0.25
+        self.time_step = 0.1
         
         self_state = state.self_state
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
