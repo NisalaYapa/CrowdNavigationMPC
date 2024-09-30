@@ -5,13 +5,16 @@ from rclpy.node import Node
 from std_msgs.msg import Float32MultiArray
 import casadi as cs
 import numpy as np
-import logging
+from smrr_interfaces.msg import Entities
+from geometry_msgs.msg import Twist
+from tf_transformations import euler_from_quaternion
+from nav_msgs.msg import Odometry
+from time import sleep
 from .NewMPCReal import NewMPCReal
-from time import sleep  # Import sleep to create a delay
 
 # Define SelfState class
 class SelfState:
-    def __init__(self, px, py, vx, vy, theta, omega, gx, gy, radius, v_pref):
+    def __init__(self, px, py, vx, vy, theta, omega, gx=10, gy=10, radius=0.5, v_pref=1.0):
         self.px = px
         self.py = py
         self.vx = vx
@@ -28,13 +31,11 @@ class SelfState:
 
 # Define HumanState class
 class HumanState:
-    def __init__(self, px, py, vx, vy, theta, omega, gx, gy, radius, v_pref):
+    def __init__(self, px, py, vx, vy, gx, gy, radius=0.3, v_pref=1.0):
         self.px = px
         self.py = py
         self.vx = vx
         self.vy = vy
-        self.theta = theta
-        self.omega = omega
         self.gx = gx
         self.gy = gy
         self.radius = radius
@@ -55,44 +56,86 @@ class CrowdNavMPCNode(Node):
     def __init__(self):
         super().__init__('crowdnav_mpc_node')
 
-        # Publisher to send control commands (v, omega)
-        self.publisher_ = self.create_publisher(Float32MultiArray, 'robot_commands', 10)
-
-        print("Node initiated")
-
         # Initialize MPC
         self.mpc = NewMPCReal()
 
+        # Initialize state variables
+        self.self_state = None
+        self.human_states = []
+
+        # Create subscribers for the custom messages
+        self.create_subscription(Entities, 'human_position', self.human_position_callback, 10)
+        self.create_subscription(Entities, 'human_velocity', self.human_velocity_callback, 10)
+        self.create_subscription(Entities, 'human_goal', self.human_goal_callback, 10)
+        self.create_subscription(Odometry, 'robot_position', self.robot_position_callback, 10)
+        self.create_subscription(Twist, 'robot_velocity', self.robot_velocity_callback, 10)
+        #self.create_subscription(Float32MultiArray, 'robot_goal', self.robot_goal_callback, 10)
+
+        # Publisher to send control commands (v, omega)
+        self.publisher_ = self.create_publisher(Float32MultiArray, 'robot_commands', 10)
+
+        self.get_logger().info("Node initiated")
+
+    def human_position_callback(self, msg):
+        # Update human states with position data
+        self.human_states = []
+        for i in range(msg.count):
+            self.human_states.append(HumanState(px=msg.x[i], py=msg.y[i], vx=0.0, vy=0.0, gx=0.0, gy=0.0))
+
+    def human_velocity_callback(self, msg):
+        # Update human states with velocity data
+        for i in range(msg.count):
+            self.human_states[i].vx = msg.x[i]
+            self.human_states[i].vy = msg.y[i]
+
+    def human_goal_callback(self, msg):
+        # Update human states with goal data
+        for i in range(msg.count):
+            self.human_states[i].gx = msg.x[i]
+            self.human_states[i].gy = msg.y[i]
+
+    def robot_position_callback(self, msg):
+    # Extract the orientation quaternion
+        orientation_q = msg.pose.pose.orientation
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        
+        # Convert quaternion to Euler angles (roll, pitch, yaw)
+        _, _, yaw = euler_from_quaternion(orientation_list)
+        
+        # Update the self_state with the position and orientation data
+        self.self_state = SelfState(px=orientation_list[0], py=orientation_list[1],vx=0.0, vy=0.0, theta=yaw, omega=0.0)
+
+    def robot_velocity_callback(self, msg):
+            velocity = msg.linear.x
+            self.self_state.vx = velocity*np.cos(self.self_state.theta)
+            self.self_state.vy = velocity*np.sin(self.self_state.theta)
+            self.publish_commands()
+
+    #def robot_goal_callback(self, msg):            
+            #self.self_state.gx = msg.data[0]
+            #self.self_state.gy = msg.data[1]
+            
+
     def publish_commands(self):
-        # Example environment state data (you can modify these values as needed)
-        self_state = SelfState(px=0.0, py=0.0, vx=0.0, vy=0.0, theta=0.0, omega=0.0, gx=5.0, gy=5.0, radius=0.5, v_pref=1.0)
-        human1 = HumanState(px=2, py=2, vx=0.1, vy=0.1, theta=0, omega=0, gx=4, gy=4, radius=0.3, v_pref=1.0)
-        human2 = HumanState(px=-2, py=-2, vx=-0.1, vy=-0.1, theta=0, omega=0, gx=-4, gy=-4, radius=0.3, v_pref=1.0)
-        human_states = [human1, human2]
-        env_state = EnvState(self_state, human_states)
+        # Predict and publish control commands
+        if self.self_state and self.human_states:
+            env_state = EnvState(self.self_state, self.human_states)
+            action = self.mpc.predict(env_state)
 
-        # Predict action using MPC based on the provided environment state
-        action = self.mpc.predict(env_state)
+            # Publish the control action (velocity, angular velocity)
+            action_msg = Float32MultiArray()
+            action_msg.data = [float(action[0]), float(action[1])]  # Assuming action is a tuple (v, omega)
+            self.publisher_.publish(action_msg)
 
-        # Publish the control action (velocity, angular velocity)
-        action_msg = Float32MultiArray()
-        action_msg.data = [action[0], action[1]]  # Assuming action is a tuple (v, omega)        
-        self.publisher_.publish(action_msg)
-
-        # Log information
-        self.get_logger().info(f"Action taken: {action}")
+            self.get_logger().info(f"Action taken: {action}")
 
 def main(args=None):
     rclpy.init(args=args)
     crowdnav_mpc_node = CrowdNavMPCNode()
 
     try:
-        # Keep the node running and publishing commands every 0.5 seconds
         while rclpy.ok():
-            crowdnav_mpc_node.publish_commands()  # Publish commands directly
-            crowdnav_mpc_node.publish_commands()
-            rclpy.spin_once(crowdnav_mpc_node)  # Ensure callbacks and keep the node alive
-            sleep(0.5)  # Publish commands every 0.5 seconds
+            rclpy.spin_once(crowdnav_mpc_node)
     except KeyboardInterrupt:
         pass
     finally:

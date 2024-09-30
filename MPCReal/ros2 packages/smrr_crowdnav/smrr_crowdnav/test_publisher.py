@@ -24,7 +24,7 @@ class TestPublisherNode(Node):
         self.robot_goal_pub = self.create_publisher(Float32MultiArray, 'robot_goal', 10)
 
         # Timer to publish sample data every second
-        self.timer = self.create_timer(1.0, self.publish_sample_data)
+        self.timer = self.create_timer(0.5, self.publish_sample_data)
 
         self.get_logger().info("Test Publisher Node has been started")
 

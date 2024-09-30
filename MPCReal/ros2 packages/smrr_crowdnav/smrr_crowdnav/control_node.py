@@ -11,6 +11,8 @@ from tf_transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 from time import sleep
 from .NewMPCReal import NewMPCReal
+from .include.transform import GeometricTransformations
+
 
 # Define SelfState class
 class SelfState:
@@ -64,17 +66,21 @@ class CrowdNavMPCNode(Node):
         self.human_states = []
 
         # Create subscribers for the custom messages
-        self.create_subscription(Entities, 'human_position', self.human_position_callback, 10)
-        self.create_subscription(Entities, 'human_velocity', self.human_velocity_callback, 10)
-        self.create_subscription(Entities, 'human_goal', self.human_goal_callback, 10)
-        self.create_subscription(Odometry, 'robot_position', self.robot_position_callback, 10)
-        self.create_subscription(Twist, 'robot_velocity', self.robot_velocity_callback, 10)
-        #self.create_subscription(Float32MultiArray, 'robot_goal', self.robot_goal_callback, 10)
+        # Create subscribers for the custom messages
+        self.create_subscription(Entities, '/laser_data_array', self.human_position_callback, 10)
+        self.create_subscription(Entities, '/vel', self.human_velocity_callback, 10)
+        self.create_subscription(Entities, '/goals', self.human_goal_callback, 10)
+        self.create_subscription(Odometry, 'robot_velocity', self.robot_velocity_callback, 10)
+
+
+
 
         # Publisher to send control commands (v, omega)
         self.publisher_ = self.create_publisher(Float32MultiArray, 'robot_commands', 10)
 
         self.get_logger().info("Node initiated")
+
+        #self.timer = self.create_timer(0.2, self.publish_commands)
 
     def human_position_callback(self, msg):
         # Update human states with position data
@@ -94,21 +100,17 @@ class CrowdNavMPCNode(Node):
             self.human_states[i].gx = msg.x[i]
             self.human_states[i].gy = msg.y[i]
 
-    def robot_position_callback(self, msg):
-    # Extract the orientation quaternion
-        orientation_q = msg.pose.pose.orientation
-        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
-        
-        # Convert quaternion to Euler angles (roll, pitch, yaw)
-        _, _, yaw = euler_from_quaternion(orientation_list)
-        
-        # Update the self_state with the position and orientation data
-        self.self_state = SelfState(px=orientation_list[0], py=orientation_list[1],vx=0.0, vy=0.0, theta=yaw, omega=0.0)
-
     def robot_velocity_callback(self, msg):
-            velocity = msg.linear.x
-            self.self_state.vx = velocity*np.cos(self.self_state.theta)
-            self.self_state.vy = velocity*np.sin(self.self_state.theta)
+            
+            transformation = self.transform.get_transform('map', 'base_link') 
+            linear_x = msg.twist.twist.linear.x
+
+            self.self_state = SelfState(px=0.0, py=0.0, vx=0.0, vy=0.0, theta=0.0, omega=0.0)
+            self.self_state.px = transformation.x
+            self.self_state.vx = transformation.y
+            self.self_state.theta = transformation.orientation_z
+            self.self_state.vx = linear_x*np.cos(self.self_state.theta)
+            self.self_state.vy = linear_x*np.sin(self.self_state.theta)
             self.publish_commands()
 
     #def robot_goal_callback(self, msg):            
@@ -122,12 +124,14 @@ class CrowdNavMPCNode(Node):
             env_state = EnvState(self.self_state, self.human_states)
             action = self.mpc.predict(env_state)
 
-            # Publish the control action (velocity, angular velocity)
-            action_msg = Float32MultiArray()
-            action_msg.data = [float(action[0]), float(action[1])]  # Assuming action is a tuple (v, omega)
-            self.publisher_.publish(action_msg)
+            control = Twist()
+            control.linear.x = action[0]
+            control.angular.z = action[1]
+            self.publisher_.publish(control)
 
-            self.get_logger().info(f"Action taken: {action}")
+            self.get_logger().info(f"Action taken: {control}")
+
+    
 
 def main(args=None):
     rclpy.init(args=args)
