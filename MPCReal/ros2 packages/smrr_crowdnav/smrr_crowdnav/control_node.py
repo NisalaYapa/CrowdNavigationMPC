@@ -6,12 +6,15 @@ from std_msgs.msg import Float32MultiArray
 import casadi as cs
 import numpy as np
 from smrr_interfaces.msg import Entities
+from geometry_msgs.msg import Twist
+from tf_transformations import euler_from_quaternion
+from nav_msgs.msg import Odometry
 from time import sleep
 from .NewMPCReal import NewMPCReal
 
 # Define SelfState class
 class SelfState:
-    def __init__(self, px, py, vx, vy, theta, omega, gx, gy, radius=0.5, v_pref=1.0):
+    def __init__(self, px, py, vx, vy, theta, omega, gx=10, gy=10, radius=0.5, v_pref=1.0):
         self.px = px
         self.py = py
         self.vx = vx
@@ -64,7 +67,9 @@ class CrowdNavMPCNode(Node):
         self.create_subscription(Entities, 'human_position', self.human_position_callback, 10)
         self.create_subscription(Entities, 'human_velocity', self.human_velocity_callback, 10)
         self.create_subscription(Entities, 'human_goal', self.human_goal_callback, 10)
-        self.create_subscription(Float32MultiArray, 'robot_state', self.robot_state_callback, 10)
+        self.create_subscription(Odometry, 'robot_position', self.robot_position_callback, 10)
+        self.create_subscription(Twist, 'robot_velocity', self.robot_velocity_callback, 10)
+        #self.create_subscription(Float32MultiArray, 'robot_goal', self.robot_goal_callback, 10)
 
         # Publisher to send control commands (v, omega)
         self.publisher_ = self.create_publisher(Float32MultiArray, 'robot_commands', 10)
@@ -89,10 +94,27 @@ class CrowdNavMPCNode(Node):
             self.human_states[i].gx = msg.x[i]
             self.human_states[i].gy = msg.y[i]
 
-    def robot_state_callback(self, msg):
-        # Update self state with robot state data
-        self.self_state = SelfState(px=msg.data[0], py=msg.data[1], vx=msg.data[2], vy=msg.data[3], 
-                                    theta=msg.data[6], omega=msg.data[7], gx=msg.data[4], gy=msg.data[5])
+    def robot_position_callback(self, msg):
+    # Extract the orientation quaternion
+        orientation_q = msg.pose.pose.orientation
+        orientation_list = [orientation_q.x, orientation_q.y, orientation_q.z, orientation_q.w]
+        
+        # Convert quaternion to Euler angles (roll, pitch, yaw)
+        _, _, yaw = euler_from_quaternion(orientation_list)
+        
+        # Update the self_state with the position and orientation data
+        self.self_state = SelfState(px=orientation_list[0], py=orientation_list[1],vx=0.0, vy=0.0, theta=yaw, omega=0.0)
+
+    def robot_velocity_callback(self, msg):
+            velocity = msg.linear.x
+            self.self_state.vx = velocity*np.cos(self.self_state.theta)
+            self.self_state.vy = velocity*np.sin(self.self_state.theta)
+            self.publish_commands()
+
+    #def robot_goal_callback(self, msg):            
+            #self.self_state.gx = msg.data[0]
+            #self.self_state.gy = msg.data[1]
+            
 
     def publish_commands(self):
         # Predict and publish control commands
@@ -112,11 +134,8 @@ def main(args=None):
     crowdnav_mpc_node = CrowdNavMPCNode()
 
     try:
-        # Keep the node running and publishing commands every 0.5 seconds
         while rclpy.ok():
             rclpy.spin_once(crowdnav_mpc_node)
-            crowdnav_mpc_node.publish_commands()  # Publish commands directly
-            sleep(0.5)  # Publish commands every 0.5 seconds
     except KeyboardInterrupt:
         pass
     finally:
