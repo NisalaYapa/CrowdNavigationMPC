@@ -14,11 +14,11 @@ class NewMPC(Policy):
         self.multiagent_training = True
         
         # Environment-related variables
-        self.time_step = 0.25  # Time step for MPC
+        self.time_step = 0.25 # Time step for MPC
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 3 # Fixed time horizon
+        self.horizon = 10 # Fixed time horizon
         
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -36,7 +36,7 @@ class NewMPC(Policy):
             gy = hum.py + hum.vy * 2
             hum_state = FullState(px=hum.px, py=hum.py, vx=hum.vx, vy=hum.vy, 
                                   gx=gx, gy=gy, v_pref=self.human_max_speed, 
-                                  theta=np.arctan2(hum.vy, hum.vx), radius=hum.radius)                    
+                                  theta=cs.atan2(hum.vy, hum.vx), radius=hum.radius)                    
             human_states.append(hum_state)
 
         state = FullyObservableJointState(self_state=robot_state, human_states=human_states, static_obs=env_state.static_obs)
@@ -52,9 +52,11 @@ class NewMPC(Policy):
         nu_r = 2  # Robot control inputs: [v, omega]
         
         # Initial state and current velocity
+        logging.info(f"robot position {robot_state.px, robot_state.py, robot_state.gx, robot_state.gy}")
         x0 = cs.MX([robot_state.px, robot_state.py, robot_state.theta])  # Initial robot state
         # Concatenate vx and vy into a vector, then compute the squared sum
         u_current = cs.vertcat(cs.sumsqr(cs.vertcat(robot_state.vx, robot_state.vy)), robot_state.omega)
+        logging.info(f"u_current {u_current}")
 
         
         # Create Opti object
@@ -67,13 +69,13 @@ class NewMPC(Policy):
             states.append(x0)
             
             for t in range(self.horizon):
-                u_t = U[:, t]
+                u_t = U[:,t]
                 
                 # Update the robot's state using the control input at the current time step
                 epsilon = 1e-6
                 next_state = states[t] + cs.vertcat(
-                    u_t[0] * (cs.sin(states[t][2] + u_t[1] * self.time_step) - cs.sin(states[t][2])) / (u_t[1] + epsilon),
-                    u_t[0] * (-cs.cos(states[t][2] + u_t[1] * self.time_step) + cs.cos(states[t][2])) / (u_t[1] + epsilon),
+                    u_t[0] * (cs.cos(states[t][2] + u_t[1] * self.time_step)),# + cs.cos(states[t][2])) / (u_t[1] + epsilon),
+                    u_t[0] * (cs.sin(states[t][2] + u_t[1] * self.time_step)), #- cs.sin(states[t][2])) / (u_t[1] + epsilon),
                     u_t[1] * self.time_step
                 )
 
@@ -88,11 +90,11 @@ class NewMPC(Policy):
         goal_pos = cs.MX([robot_state.gx, robot_state.gy])
 
         # Step 3: Cost function for goal deviation and control effort
-        Q_goal = 300  # Medium priority to reach the goal
-        Q_control = 30 # Moderate weight for smooth control inputs
-        Q_pref = 10    # Medium preference for stable velocity
-        Q_terminal = 300 # Strong weight to reach the goal at the terminal state
-        Q_human = 5
+        Q_goal = 200 # Medium priority to reach the goal
+        Q_smooth = 30 # Moderate weight for smooth control inputs
+        Q_pref = 30    # Medium preference for stable velocity
+        Q_terminal = 1500 # Strong weight to reach the goal at the terminal state
+        Q_human = 1
  
 
         def cost_function(X_pred, U, human_states):
@@ -106,8 +108,7 @@ class NewMPC(Policy):
                     control_smooth = cs.sumsqr(U[1, t])# - U[1, t - 1])
                     control_pref = cs.sumsqr(U[0, t] - U[0, t-1])  # Prefer certain velocity
                 else:
-                    control_smooth = cs.sumsqr(U[1, t])# - robot_state.omega)
-                
+                    control_smooth = cs.sumsqr(U[1, t])                
                     current_velocity = cs.vertcat(robot_state.vx, robot_state.vy)
                     control_pref = cs.sumsqr(U[0, t] - cs.sumsqr(current_velocity))
                 
@@ -115,12 +116,12 @@ class NewMPC(Policy):
                     human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
                     dist_to_human_sqr = cs.sumsqr(X_pred[t][:2] - human_pos)
                     human_radius = hum[4]  # Human's radius
-                    cost -= Q_human*(dist_to_human_sqr - (human_radius + robot_radius + 0.05)**2)  
+                    cost = Q_human*(1/(dist_to_human_sqr - (human_radius + robot_radius + 0.02)**2))
 
-                cost += Q_goal * dist_to_goal + Q_control * control_smooth + control_pref * Q_pref
+                cost += Q_goal * dist_to_goal + Q_smooth * control_smooth + control_pref * Q_pref
             
             # Terminal state goal deviation
-            dist_terminal = cs.sumsqr(X_pred[-1][:2] - goal_pos)
+            dist_terminal = cs.sumsqr(X_pred[0][:2] - goal_pos)
             cost += Q_terminal * dist_terminal
             return cost
 
@@ -134,7 +135,7 @@ class NewMPC(Policy):
                     human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
                     dist_to_human_sqr = cs.sumsqr(robot_pos - human_pos)
                     human_radius = hum[4]  # Human's radius
-                    constraints.append(dist_to_human_sqr - (human_radius + robot_radius + 0.08) ** 2)  # Safety margin
+                    constraints.append(dist_to_human_sqr - (human_radius + robot_radius + 0.02) ** 2)  # Safety margin
             return constraints
 
         human_constraints = collision_constraint(X_pred, predicted_human_poses[0])
@@ -205,14 +206,22 @@ class NewMPC(Policy):
         # Solve the optimization problem
         try:
             sol = opti.solve()
+            
         except RuntimeError as e:
             logging.error(f"Solver failed with error: {e}")
+            
             return ActionRot(0,0)  # Safe default action
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0])    
+        logging.info(f"cost {sol.value(total_cost) }")
+        logging.info(f"U_opt {sol.value(U_opt) }")
+        logging.info(f"theta {robot_state.theta}")
+        next_px = (robot_state.px + u_mpc[0]*np.cos(robot_state.theta+u_mpc[1]*self.time_step))
+        logging.info(f"next_px {dynamics([robot_state.px, robot_state.py, robot_state.theta],sol.value(U_opt))}")
+        
         action = ActionRot(u_mpc[0], u_mpc[1]*self.time_step)
-        #action = ActionRot(0, 3.14)
+        #action = ActionRot(0, 3.14/3)
 
         logging.info(f"Generated action: {action}")
         return action  # Return the optimal control action
