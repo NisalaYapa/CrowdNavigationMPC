@@ -184,7 +184,7 @@ class NewMPCReal():
         try:
             sol = opti.solve()
         except RuntimeError as e:
-            logging.error(f"Solver failed with error: {e}")
+            #logging.error(f"Solver failed with error: {e}")
             return (0,0) # Safe default action
 
         # Get the optimal control input for the first step
@@ -192,5 +192,5 @@ class NewMPCReal():
         action = (u_mpc[0], u_mpc[1])
         #action = ActionRot(0, 3.14)
 
-        logging.info(f"Generated action: {action}")
+        #logging.info(f"Generated action: {action}")
         return action  # Return the optimal control action

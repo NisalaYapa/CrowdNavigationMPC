@@ -20,7 +20,8 @@ setup(
     tests_require=['pytest'],
     entry_points={
         'console_scripts': [
-            'control_node_new = smrr_crowdnav.control_node:main',  # Ensure this matches your file structure
+            'control_node_new = smrr_crowdnav.control_node:main',  
+            'test_publisher = smrr_crowdnav.test_publisher:main',
         ],
     },
 )
