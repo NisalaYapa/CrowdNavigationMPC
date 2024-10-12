@@ -29,6 +29,7 @@ class NewMPCChanging(Policy):
         human_states = []
         robot_state = env_state.self_state
         robot_radius = robot_state.radius
+        x0 = [robot_state.px, robot_state.py]
 
         for hum in env_state.human_states:               
             gx = hum.px + hum.vx * 2
@@ -51,7 +52,7 @@ class NewMPCChanging(Policy):
         nu_r = 2  # Robot control inputs: [vx, vy]
         
         # Initial state and current velocity
-        x0 = cs.MX([robot_state.px, robot_state.py])  # Initial robot state
+        #x0 = cs.MX([robot_state.px, robot_state.py])  # Initial robot state
         u_current = cs.MX([robot_state.vx, robot_state.vy])  # Current robot velocity
 
         # Create Opti object
