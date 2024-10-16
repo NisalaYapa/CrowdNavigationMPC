@@ -13,32 +13,21 @@ class NewMPCReal():
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 5 # Fixed time horizon
+        self.horizon = 10 # Fixed time horizon
         
 
     def predict(self, env_state):
         human_states = []
         robot_state = env_state.self_state
         robot_radius = robot_state.radius
-        x0 =( env_state.self_state.px, env_state.self_state.py, env_state.self_state.theta)
+        x_inital =( env_state.self_state.px, env_state.self_state.py, env_state.self_state.theta)
 
         if robot_state.omega is None:
             robot_state.omega = 0
 
         # Convert robot_state (of type SelfState) to FullState
-        robot_full_state = FullState(
-            px=robot_state.px, 
-            py=robot_state.py, 
-            vx=robot_state.vx, 
-            vy=robot_state.vy, 
-            radius=robot_state.radius, 
-            gx=robot_state.gx, 
-            gy=robot_state.gy, 
-            v_pref=robot_state.v_pref, 
-            theta=robot_state.theta, 
-            omega=robot_state.omega
-        )
-
+        robot_full_state = FullState(px=robot_state.px,  py=robot_state.py, vx=robot_state.vx,  vy=robot_state.vy, radius=robot_state.radius, 
+                                      gx=robot_state.gx,  gy=robot_state.gy, v_pref=robot_state.v_pref,  theta=robot_state.theta,  omega=robot_state.omega)
         for hum in env_state.human_states:               
             gx = hum.px + hum.vx * 2
             gy = hum.py + hum.vy * 2
@@ -115,18 +104,18 @@ class NewMPCReal():
 
 
      
-        X_pred = dynamics(x0, U_opt)
+        X_pred = dynamics(x_inital, U_opt)
         
         
         goal_pos = cs.MX([robot_state.gx, robot_state.gy])
 
         # Step 3: Cost function for goal deviation and control effort
-        Q_goal = 50000 # Medium priority to reach the goal
+        Q_goal = 500 # Medium priority to reach the goal
         Q_control = 10 # Moderate weight for smooth control inputs
-        Q_pref = 10 # Medium preference for stable velocity
-        Q_terminal = 10000# Strong weight to reach the goal at the terminal state
-        Q_human = 1 # 5
-        Q_orientation = 1000
+        Q_pref = 5 # Medium preference for stable velocity
+        Q_terminal = 300# Strong weight to reach the goal at the terminal state
+        Q_human = 3 # 5
+        Q_orientation = 3
  
 
         def cost_function(X_pred, U, human_states):
@@ -153,13 +142,13 @@ class NewMPCReal():
                     human_pos = cs.vertcat(hum[0], hum[1])  # Human's position
                     dist_to_human_sqr = cs.sumsqr(X_pred[t][:2] - human_pos)
                     human_radius = hum[4]  # Human's radius
-                    #cost -= Q_human*(dist_to_human_sqr - (human_radius + robot_radius + 0.1)**2)  
+                    cost -= Q_human*(dist_to_human_sqr - (human_radius + robot_radius + 0.1)**2)  
 
                 cost += Q_goal * dist_to_goal  + control_pref * Q_pref - Q_control * (control_smooth)
                 #cost += Q_goal * dist_to_goal + control_pref * Q_pref
             
             # Terminal state goal deviation
-            dist_terminal = cs.sumsqr(X_pred[0][:2] - goal_pos)
+            dist_terminal = cs.sumsqr(X_pred[-1][:2] - goal_pos)
             cost += Q_terminal * dist_terminal
             return cost
 
@@ -202,17 +191,17 @@ class NewMPCReal():
 
         
 
-        # Set up the solver
-        # opti.solver('ipopt', {
-        #     'ipopt.max_iter': 500,
-        #     'ipopt.tol': 1e-12,
-        #     'ipopt.acceptable_tol': 1e-12,
-        #     'ipopt.acceptable_iter': 100,
-        #     'ipopt.print_level': 0,
-        #     'print_time': False
-        # })
+        #Set up the solver
+        opti.solver('ipopt', {
+            'ipopt.max_iter': 500,
+            'ipopt.tol': 1e-12,
+            'ipopt.acceptable_tol': 1e-12,
+            'ipopt.acceptable_iter': 100,
+            'ipopt.print_level': 0,
+            'print_time': False
+        })
 
-        opti.solver('ipopt')
+        #opti.solver('ipopt')
 
         # Solve the optimization problem
         try:
@@ -227,13 +216,12 @@ class NewMPCReal():
         print(f"cost {sol.value(total_cost) }")
         print(f"U_opt {sol.value(U_opt) }")
         print(f"theta {robot_state.theta}")
-        print(f"next {dynamics([robot_state.px, robot_state.py, robot_state.theta],sol.value(U_opt))}")
-        #print(np.sin(sol.value(U_opt[1,0])))
-        print(f"Exact U_value: {sol.value(U_opt[1, 0]):.20f}")
-        print("x0", x0)
-        # Ut = np.array([[ 5.00000010e-01 , 5.00000010e-01 , 5.00000010e-01 , 5.00000010e-01  , 5.00000010e-01], [3.25704057e-17 , 2.17408098e-16 ,-1.41776508e-16 , 6.99641310e-17 , -4.79445632e-18]])                                                                                                                               
-        # ur = sol.value(U_opt[1, 0]).full().flatten()      
-        # print(ur)                                                                                                                   
+        next_states = dynamics(x_inital,sol.value(U_opt))
+        print(f"predicted positions {next_states}")
+        print(np.sin(sol.value(U_opt[1,0])))
+        print(f"U_value: {sol.value(U_opt[1, 0]):.20f}")
+        print("x_inital", x_inital)
+                                                                                                                    
                                                                                                                                                                          
 
         # print(Ut[:,0])
@@ -244,4 +232,4 @@ class NewMPCReal():
         action = (float(u1), float(u2))
 
         #logging.info(f"Generated action: {action}")
-        return action  # Return the optimal control action
+        return action , next_states # Return the optimal control action

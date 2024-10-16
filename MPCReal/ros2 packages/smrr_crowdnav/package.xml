@@ -14,7 +14,10 @@
   
   <depend>rclpy</depend>
   <depend>std_msgs</depend>
-
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf_transformations</depend>
+  <depend>smrr_interfaces</depend>
 
   <!-- Runtime dependencies -->
   <exec_depend>casadi</exec_depend>

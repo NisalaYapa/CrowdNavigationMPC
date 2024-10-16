@@ -7,18 +7,20 @@ from std_msgs.msg import Float32MultiArray
 import casadi as cs
 import numpy as np
 from smrr_interfaces.msg import Entities
-from geometry_msgs.msg import TwistStamped
+from geometry_msgs.msg import TwistStamped, Point
 from tf_transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 from time import sleep
 from .NewMPCReal import NewMPCReal
 from .dwa import DynamicWindowApproach
 from .include.transform import GeometricTransformations
+from visualization_msgs.msg import Marker, MarkerArray
+
 
 
 # Define SelfState class
 class SelfState:
-    def __init__(self, px, py, vx, vy, theta, omega, gx=-3, gy=-3, radius=0.25, v_pref=0.5):
+    def __init__(self, px, py, vx, vy, theta, omega, gx=5, gy=-5, radius=0.2, v_pref=0.5):
         self.px = px
         self.py = py
         self.vx = vx
@@ -79,7 +81,8 @@ class CrowdNavMPCNode(Node):
         self.create_subscription(Odometry, '/diff_drive_controller/odom', self.robot_velocity_callback, 10)
 
         # Publisher to send control commands (v, omega)
-        self.publisher_ = self.create_publisher(TwistStamped, '/diff_drive_controller/cmd_vel', 10)
+        self.action_publisher = self.create_publisher(TwistStamped, '/diff_drive_controller/cmd_vel', 10)
+        self.prediction_publisher = self.create_publisher(MarkerArray, 'prediction_states_marker', 10)
        
         self.get_logger().info("Node initiated")
 
@@ -148,31 +151,112 @@ class CrowdNavMPCNode(Node):
             print(f"robot state: {env_state.self_state.px, env_state.self_state.py, env_state.self_state.theta}")
             print(f"human state: {env_state.human_states[0].px, env_state.human_states[0].py}")
             
-            action = self.policy.predict(env_state)
+            MPC = self.policy.predict(env_state)
+            action = MPC[0]
+            print("test action print", action)
+            next_states = MPC[1]
+            print("test_next_state", next_states)
+
+            if (action != 0):
+                control = TwistStamped()
+                control.header.stamp = self.get_clock().now().to_msg()
+
+                self.publish_next_states(next_states)
+                
+
+                dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.self_state.goal_position))
+                print(f" current position: {self.self_state.position} goal position: {self.self_state.goal_position} distance to goal: {dist_to_goal}")
+                
+                if (dist_to_goal >= 0.25):            
+                    control.twist.linear.x = float(action[0])
+                    control.twist.angular.z = float(action[1])
+                    #control.twist.linear.x = 0.0
+                    #control.twist.angular.z = 0.2
+                    self.action_publisher.publish(control)
+                    print(f"Action taken Solved: {control}")
+
+                else:
+                    control.twist.linear.x = 0.0
+                    control.twist.angular.z = 0.0
+                    self.action_publisher.publish(control)
+                    print(f"Action taken: {control}")
+
+                #self.get_logger().info(f"Action taken: {control}")
+
+    def publish_next_states(self, next_states):
+        print("Publishing next states as markers...")
+
+        # Create a MarkerArray to hold multiple markers
+        marker_array = MarkerArray()
+
+        # Create a Marker for the line strip (curve)
+        line_strip_marker = Marker()
+        line_strip_marker.header.frame_id = "map"
+        line_strip_marker.header.stamp = self.get_clock().now().to_msg()
+        line_strip_marker.ns = "line_strip"
+        line_strip_marker.id = 1000  # A unique ID for the line strip marker
+        line_strip_marker.type = Marker.LINE_STRIP
+        line_strip_marker.action = Marker.ADD
+
+        # Set line color and thickness (RGBA and scale)
+        line_strip_marker.scale.x = 0.05  # Line thickness
+        line_strip_marker.color.r = 1.0
+        line_strip_marker.color.g = 0.0
+        line_strip_marker.color.b = 0.0
+        line_strip_marker.color.a = 1.0  # Fully opaque
+
+        if next_states != 0:
+            print("next state is not zero")
+
+            for i, state in enumerate(next_states):
+                x = float(state[0])
+                y = float(state[1])
+                print("X next", x, "Y next", y)
+
+                # Create a marker for each point (SPHERE)
+                marker = Marker()
+                marker.header.frame_id = "map"
+                marker.header.stamp = self.get_clock().now().to_msg()
+                marker.ns = "my_markers"
+                marker.id = i  # Use the index as a unique ID for each marker
+                marker.type = Marker.SPHERE
+                marker.action = Marker.ADD
+
+                # Set marker position
+                marker.pose.position.x = x
+                marker.pose.position.y = y
+                marker.pose.position.z = 0.0  # Customize Z if needed
+
+                # Set marker scale (size)
+                marker.scale.x = 0.1
+                marker.scale.y = 0.1
+                marker.scale.z = 0.1
+
+                # Set marker color (RGBA)
+                marker.color.r = 0.5
+                marker.color.g = 0.5
+                marker.color.b = 0.0
+                marker.color.a = 1.0
+
+                # Add the marker to the MarkerArray
+                marker_array.markers.append(marker)
+
+                # Also add the position to the line strip
+                point = Point()
+                point.x = x
+                point.y = y
+                point.z = 0.0  # Same Z as the points
+                line_strip_marker.points.append(point)
+
+        # Add the line strip marker to the MarkerArray
+        marker_array.markers.append(line_strip_marker)
+
+        # Publish the MarkerArray (points and line strip)
+        self.prediction_publisher.publish(marker_array)
+        self.get_logger().info(f'Published {len(marker_array.markers)} markers, including points and line strip')
 
 
-            control = TwistStamped()
-            control.header.stamp = self.get_clock().now().to_msg()
-             
 
-            dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.self_state.goal_position))
-            print(f" current position: {self.self_state.position} goal position: {self.self_state.goal_position} distance to goal: {dist_to_goal}")
-            
-            if (dist_to_goal >= 1):            
-                control.twist.linear.x = float(action[0])
-                control.twist.angular.z = float(action[1])
-                #control.twist.linear.x = 0.0
-                #control.twist.angular.z = 0.2
-                self.publisher_.publish(control)
-                print(f"Action taken Solved: {control}")
-
-            else:
-                control.twist.linear.x = 0.0
-                control.twist.angular.z = 0.0
-                self.publisher_.publish(control)
-                print(f"Action taken: {control}")
-
-            #self.get_logger().info(f"Action taken: {control}")
 
     
 
