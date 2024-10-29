@@ -25,6 +25,7 @@ setup(
             'test_publisher = smrr_crowdnav.test_publisher:main',
             'test_command = smrr_crowdnav.testcommands:main',
             'goal_client_new = smrr_crowdnav.goal_client:main',
+            'map_scan = smrr_crowdnav.map:main',
         ],
     },
 )

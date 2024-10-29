@@ -33,7 +33,7 @@ class NavigateToGoalClient(Node):
             goal_msg, feedback_callback=self.feedback_callback)
         self._send_goal_future.add_done_callback(self.goal_response_callback)
 
-        self.timer_ = self.create_timer(2.0, self.cancel_goal)
+        self.timer_ = self.create_timer(10.0, self.cancel_goal)
 
     def goal_response_callback(self, future):
         """Handle the response from the action server after sending the goal."""
