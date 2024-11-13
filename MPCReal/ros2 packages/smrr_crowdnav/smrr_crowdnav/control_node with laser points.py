@@ -1,7 +1,5 @@
 #!/usr/bin/env python3.8
 
-#This is the basic crowd navigation control node. it is considering static obstacles directly from the laser readings. With this run NewMPCReal with lasers. 
-
 import rclpy
 import tf_transformations
 from rclpy.node import Node

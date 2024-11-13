@@ -16,7 +16,7 @@ class NewMPCReal():
         self.horizon = 7# Fixed time horizon
         
 
-    def predict(self, env_state, laser_data):
+    def predict(self, env_state):
         human_states = []
         robot_state = env_state.self_state
         robot_radius = robot_state.radius
@@ -192,48 +192,7 @@ class NewMPCReal():
             opti.subject_to(constr >= 0)  # No collisions
 
 
-        def wall_collision_constraint_matrix(X_pred, laser_data, robot_radius):
-            # Convert X_pred to a matrix with only positions (2, num_timesteps)
-            robot_positions = cs.horzcat(*[X_pred[t][:2] for t in range(len(X_pred))]).T  # Shape (num_timesteps, 2)
-            
-            # Convert laser_data (wall points) to a CasADi matrix (num_walls, 2)
-            wall_positions = cs.DM(laser_data)  # Shape (num_walls, 2)
-
-            # Initialize squared_distances as MX to handle symbolic expressions
-            num_timesteps = robot_positions.shape[0]
-            num_walls = wall_positions.shape[0]
-            squared_distances = cs.MX.zeros(num_timesteps, num_walls)
-            
-            # Compute squared differences between each robot position and each wall point
-            for t in range(num_timesteps):
-                diff = cs.repmat(robot_positions[t, :], num_walls, 1) - wall_positions
-                squared_distances[t, :] = cs.sum2(diff ** 2)
-            
-            # Define safety margin squared
-            safety_margin_squared = (robot_radius + 0.03) ** 2
-
-            # Constraints: each squared distance should be greater than or equal to safety margin squared
-            constraints = squared_distances - safety_margin_squared 
-
-            # Compute minimum constraint for each timestep manually
-            min_constraints = [cs.mmin(constraints[t, :]) for t in range(num_timesteps)]
-
-            # Return as a vertical stack of the constraints
-            return cs.vertcat(*min_constraints)
-
-
-
-        # Usage in optimization problem
-        wall_constraints = wall_collision_constraint_matrix(X_pred, laser_data, robot_radius)
-
-        # Apply constraints directly
-        for i in range(wall_constraints.shape[0]):
-            opti.subject_to(wall_constraints[i] >= 0)
-
-
-
-
-    
+        
 
         # Add static obstacle constraints
         
@@ -273,7 +232,7 @@ class NewMPCReal():
         except RuntimeError as e:
             print("Error")
             #logging.error(f"Solver failed with error: {e}")
-            return (0,0) ,[], future_human_states # Safe default action
+            return (0,0) # Safe default action
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0]) 

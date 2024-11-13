@@ -273,7 +273,7 @@ class NewMPCReal():
         except RuntimeError as e:
             print("Error")
             #logging.error(f"Solver failed with error: {e}")
-            return (0,0) ,[], future_human_states # Safe default action
+            return (0,0) # Safe default action
 
         # Get the optimal control input for the first step
         u_mpc = sol.value(U_opt[:, 0]) 
