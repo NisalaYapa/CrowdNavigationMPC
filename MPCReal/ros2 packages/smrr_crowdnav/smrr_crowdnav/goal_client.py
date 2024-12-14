@@ -4,8 +4,7 @@ import rclpy
 from rclpy.action import ActionClient
 from rclpy.node import Node
 from smrr_interfaces.action import NavigateToGoal
-import threading
-import time
+import argparse
 
 class NavigateToGoalClient(Node):
     def __init__(self):
@@ -32,8 +31,6 @@ class NavigateToGoalClient(Node):
         self._send_goal_future = self._action_client.send_goal_async(
             goal_msg, feedback_callback=self.feedback_callback)
         self._send_goal_future.add_done_callback(self.goal_response_callback)
-
-        #self.timer_ = self.create_timer(10.0, self.cancel_goal)
 
     def goal_response_callback(self, future):
         """Handle the response from the action server after sending the goal."""
@@ -65,66 +62,31 @@ class NavigateToGoalClient(Node):
         # Reset the goal handle after processing the result
         self.goal_handle = None
 
-    def cancel_goal(self):
-        """Cancel the current goal if it is active."""
-        if self.goal_handle and self.goal_handle.accepted:
-            self.get_logger().info("Cancelling the current goal...")
-            cancel_future = self.goal_handle.cancel_goal_async()
-            cancel_future.add_done_callback(self.cancel_done_callback)
-
-            # Cancel the timer after sending the cancel request
-            self.timer_.cancel()
-        else:
-            self.get_logger().info("No active goal to cancel.")
-
-    def cancel_done_callback(self, future):
-        """Handle the result of the goal cancellation request."""
-        cancel_response = future.result()
-
-        if cancel_response.goals_canceling:
-            self.get_logger().info("Goal cancellation accepted.")
-        else:
-            self.get_logger().info("Goal cancellation rejected.")
-
 
 def main(args=None):
     """Main function to run the action client."""
     rclpy.init(args=args)
 
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description="Send goal coordinates to the NavigateToGoal action server.")
+    parser.add_argument('--x', type=float, required=True, help='Goal x coordinate')
+    parser.add_argument('--y', type=float, required=True, help='Goal y coordinate')
+    args = parser.parse_args()
+
     # Create the action client node
     action_client = NavigateToGoalClient()
     
-    # Sends goal and waits until it’s completed
-    x = float(input("Enter goal x coordinate: "))
-    y = float(input("Enter goal y coordinate: "))
-    action_client.send_goal(x, y)
+    # Send goal and wait until it’s completed
+    action_client.send_goal(args.x, args.y)
 
-    
-    #action_client.send_goal(5.0, 5.0)
+    try:
+        rclpy.spin(action_client)
+    except KeyboardInterrupt:
+        action_client.get_logger().info("Keyboard interrupt, shutting down...")
+    finally:
+        action_client.destroy_node()
+        rclpy.shutdown()
 
-    rclpy.spin(action_client)
-
-
-    # # Main command loop to interact with the user
-    # try:
-    #     while rclpy.ok():
-    #         command = input("Enter 'g' to send goal, 'c' to cancel, or 'q' to quit: ")
-
-    #         if command == 'g':
-    #             x = float(input("Enter goal x coordinate: "))
-    #             y = float(input("Enter goal y coordinate: "))
-    #             action_client.send_goal(x, y)
-    #         elif command == 'c':
-    #             action_client.cancel_goal()
-    #         elif command == 'q':
-    #             break
-
-    #         # Spin once to process feedback and callbacks
-    #         rclpy.spin_once(action_client, timeout_sec=0.1)  # Short timeout to allow user input
-
-    # finally:
-    #     action_client.destroy_node()
-    #     rclpy.shutdown()
 
 if __name__ == '__main__':
     main()

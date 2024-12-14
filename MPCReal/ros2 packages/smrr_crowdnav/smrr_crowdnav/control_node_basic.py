@@ -1,5 +1,7 @@
 #!/usr/bin/env python3.8
 
+#This is the basic crowd navigation control node. it is not considering static obstacles.
+
 import rclpy
 import tf_transformations
 from rclpy.node import Node
@@ -14,7 +16,7 @@ from geometry_msgs.msg import TwistStamped, Point, PoseStamped
 from tf_transformations import euler_from_quaternion
 from nav_msgs.msg import Odometry
 from time import sleep
-from .NewMPCReal_waypointfollower import NewMPCReal
+from .NewMPCReal_basic import NewMPCReal
 from .include.transform import GeometricTransformations
 from visualization_msgs.msg import Marker, MarkerArray
 from action_msgs.msg import GoalStatus
@@ -83,14 +85,7 @@ class CrowdNavMPCNode(Node):
         self.action_publisher = self.create_publisher(TwistStamped, '/diff_drive_controller/cmd_vel', 10)
         self.prediction_publisher = self.create_publisher(MarkerArray, 'prediction_states_marker', 10)
         self.human_prediction_publisher = self.create_publisher(MarkerArray, 'human_trajectories', 10)
-        self.global_path_publisher = self.create_publisher(MarkerArray, 'global_path', 10)
         self.get_logger().info("Node initiated")
-
-        self.global_path = []
-        self.num_int_goals = 3
-        self.intermediate_goal = -1
-        self.final_gx = 0
-        self.final_gy = 0
 
         #self.timer = self.create_timer(0.7, self.publish_commands)
         self.transform = GeometricTransformations(self)
@@ -131,16 +126,10 @@ class CrowdNavMPCNode(Node):
         self.get_logger().info('Executing navigation to goal')
 
         # Set robot's goal based on action input
-        self.final_gx= goal_handle.request.goal_x
-        self.final_gy= goal_handle.request.goal_y
-        self.final_goal = (self.final_gx, self.final_gy)
-
-
-        for i in range(self.num_int_goals + 2):
-            self.global_path.append((self.self_state.px + i*(self.final_gx - self.self_state.px)/(self.num_int_goals + 1),self.self_state.py + i*(self.final_gy - self.self_state.py)/(self.num_int_goals + 1) ))
-
-        print("global path", self.global_path)
-        print("goal", self.final_gx, self.final_gy)
+        self.self_state.gx = goal_handle.request.goal_x
+        self.self_state.gy = goal_handle.request.goal_y
+        self.self_state.goal_position = (self.self_state.gx, self.self_state.gy)
+        print("goal", self.self_state.gx, self.self_state.gy)
         print("position", self.self_state.px, self.self_state.py)
 
         feedback_msg = NavigateToGoal.Feedback()
@@ -152,7 +141,7 @@ class CrowdNavMPCNode(Node):
 
         # Loop until the goal is reached or canceled
         while rclpy.ok():
-            dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.final_goal))
+            dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.self_state.goal_position))
 
             feedback_msg.distance_to_goal = dist_to_goal
             goal_handle.publish_feedback(feedback_msg)
@@ -186,8 +175,6 @@ class CrowdNavMPCNode(Node):
                 self.get_logger().info('Goal reached successfully')
                 self.cleanup_after_goal()
                 return result
-
-
 
         # Publish stop command if the goal was not succeeded
         control = TwistStamped()
@@ -257,32 +244,8 @@ class CrowdNavMPCNode(Node):
 
     def publish_commands(self):
         if self.self_state and self.human_states and self.ready:
-            print("global path", self.global_path)
-
-            if self.intermediate_goal == -1 :
-                self.intermediate_goal = 0
-
-            dist_to_int_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.global_path[self.intermediate_goal]))
-
-            if (dist_to_int_goal <= 1.0) and (self.intermediate_goal != (self.num_int_goals + 1)):
-                self.intermediate_goal = self.intermediate_goal + 1
-
-            print("intermediate goal", self.intermediate_goal)
-
-            print("distance_to_int_goal", dist_to_int_goal)
-
-            self.publish_global_path(self.global_path,self.intermediate_goal)
-
-            self.self_state.gx = self.global_path[self.intermediate_goal][0]
-            self.self_state.gy = self.global_path[self.intermediate_goal][1]
-            self.self_state.goal_position = (self.self_state.gx, self.self_state.gy)
-
             env_state = EnvState(self.self_state, self.human_states if self.human_states else [])
             MPC = self.policy.predict(env_state)
-
-            
-
-
 
             action = MPC[0]
             next_states = MPC[1]
@@ -297,7 +260,7 @@ class CrowdNavMPCNode(Node):
                 self.publish_next_states(next_states)
                 self.publish_human_next_states(human_next_states)
         
-                dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.final_goal))
+                dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.self_state.goal_position))
 
                 if dist_to_goal >= 0.25:
                     control.twist.linear.x = float(action[0])
@@ -307,58 +270,6 @@ class CrowdNavMPCNode(Node):
                     control.twist.linear.x = 0.0
                     control.twist.angular.z = 0.0
                     self.action_publisher.publish(control)
-
-    def publish_global_path(self, points, current_goal):
-        marker_array = MarkerArray()
-
-        # Create a line strip marker for the global path
-        line_strip_marker = Marker()
-        line_strip_marker.header.frame_id = "map"
-        line_strip_marker.header.stamp = self.get_clock().now().to_msg()
-        line_strip_marker.ns = "global_path"
-        line_strip_marker.id = 1000
-        line_strip_marker.type = Marker.LINE_STRIP
-        line_strip_marker.action = Marker.ADD
-        line_strip_marker.scale.x = 0.05
-        line_strip_marker.color.r = 1.0  # Red color for the path
-        line_strip_marker.color.a = 1.0
-
-        # Add points to the line strip marker
-        for i, point in enumerate(points):
-            marker_point = Point()
-            marker_point.x = float(point[0])
-            marker_point.y = float(point[1])
-            marker_point.z = 0.0
-            line_strip_marker.points.append(marker_point)
-
-            # If the current point is the current goal, add a sphere marker
-            if i == current_goal:
-                goal_marker = Marker()
-                goal_marker.header.frame_id = "map"
-                goal_marker.header.stamp = self.get_clock().now().to_msg()
-                goal_marker.ns = "global_path"
-                goal_marker.id = 1000 + i
-                goal_marker.type = Marker.SPHERE
-                goal_marker.action = Marker.ADD
-                goal_marker.pose.position.x = marker_point.x
-                goal_marker.pose.position.y = marker_point.y
-                goal_marker.pose.position.z = 0.0
-                goal_marker.scale.x = 0.2
-                goal_marker.scale.y = 0.2
-                goal_marker.scale.z = 0.2
-                goal_marker.color.r = 0.0  # Blue color for the current goal
-                goal_marker.color.g = 0.0
-                goal_marker.color.b = 1.0
-                goal_marker.color.a = 1.0
-                goal_marker.lifetime = rclpy.duration.Duration(seconds=1).to_msg()
-                marker_array.markers.append(goal_marker)
-                
-
-        # Append the line strip marker to the marker array
-        marker_array.markers.append(line_strip_marker)
-
-        # Publish the marker array
-        self.global_path_publisher.publish(marker_array)
 
     def publish_next_states(self, next_states):
         marker_array = MarkerArray()
