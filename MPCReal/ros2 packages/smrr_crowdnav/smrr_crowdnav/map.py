@@ -9,6 +9,7 @@ from tf2_ros import TransformListener, Buffer
 from sklearn.cluster import AgglomerativeClustering
 import tf_transformations
 
+#line Extraction
 class LidarLineExtraction(Node):
     def __init__(self):
         super().__init__('lidar_line_extraction')
