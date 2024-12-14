@@ -21,6 +21,9 @@ from action_msgs.msg import GoalStatus
 from smrr_interfaces.action import NavigateToGoal# Custom action file
 
 
+### This is an action server of control node
+### This is dividing global path onto several waypoints that can be tracked instead of final goal.
+
 # Define SelfState class
 class SelfState:
     def __init__(self, px, py, vx, vy, theta, omega, gx=0.0, gy=0.0, radius=0.4, v_pref=0.5):

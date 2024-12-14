@@ -15,6 +15,9 @@ from smrr_interfaces.msg import Entities
 from .NewMPCReal_kf import NewMPCReal
 from .include.transform import GeometricTransformations
 
+### This is a simplified code of controlnode in publisher-subscriber achitechture. 
+### It is only running the NewMPC_kf (In here it is not computing the MPC but it is only predicting human paths using ORCA all)
+### This can visualize predicted human paths when human state is using Kalman Filter vs not using Kalman Filter
 
 
 # Define SelfState class

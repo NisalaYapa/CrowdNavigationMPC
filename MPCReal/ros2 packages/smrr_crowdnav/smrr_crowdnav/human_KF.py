@@ -8,6 +8,10 @@ import numpy as np
 from builtin_interfaces.msg import Duration  # Import Duration for setting lifetime
 from smrr_interfaces.msg import Entities
 
+### This is the Kalman Filter for smoothen the huamn position and velocities
+### This can visualize both raw and Kalman filterd positions and velocities in RVIZ2
+
+
 class HumanKF(Node):
     def __init__(self):
         super().__init__('Human_KF_node')

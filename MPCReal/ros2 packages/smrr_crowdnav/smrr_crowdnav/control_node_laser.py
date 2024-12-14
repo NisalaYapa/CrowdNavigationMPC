@@ -23,6 +23,9 @@ from action_msgs.msg import GoalStatus
 from smrr_interfaces.action import NavigateToGoal# Custom action file
 
 
+### This is an action server of control node
+### Thsi is a test node which has static points in (lidar readings) to test the performance
+
 # Define SelfState class
 class SelfState:
     def __init__(self, px, py, vx, vy, theta, omega, gx=0.0, gy=0.0, radius=0.4, v_pref=0.5):

@@ -9,11 +9,11 @@ class NewMPCReal():
     def __init__(self):
         
         # Environment-related variables
-        self.time_step = 0.6 # Time step for MPC
+        self.time_step = 1 # Time step for MPC
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 12# Fixed time horizon
+        self.horizon = 5# Fixed time horizon
         
 
     def predict(self, env_state):

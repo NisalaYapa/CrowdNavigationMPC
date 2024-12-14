@@ -21,6 +21,12 @@ from action_msgs.msg import GoalStatus
 import asyncio
 from smrr_interfaces.action import NavigateToGoal# Custom action file
 
+
+### This is the main version of control node (action server)
+### This has a correctly running action server
+### This is taking kalman filters positions and velocities to do the human path prediction
+### Need to be integrate static obstacles
+
 # Define SelfState class
 class SelfState:
     def __init__(self, px, py, vx, vy, theta, omega, gx=0.0, gy=0.0, radius=0.4, v_pref=0.5):
@@ -88,7 +94,7 @@ class CrowdNavMPCNode(Node):
         self.get_logger().info("Node initiated")
 
         self.global_path = []
-        self.num_int_goals = 3
+        self.num_int_goals = 2
         self.intermediate_goal = -1
         self.final_gx = 0
         self.final_gy = 0

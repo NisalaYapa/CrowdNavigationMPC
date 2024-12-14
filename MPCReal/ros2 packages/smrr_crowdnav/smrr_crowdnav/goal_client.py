@@ -6,6 +6,10 @@ from rclpy.node import Node
 from smrr_interfaces.action import NavigateToGoal
 import argparse
 
+
+### This is the action client for control nodes (action servers)
+### the goal should be given as parameters ( --x 10.0 --y 5.8 )
+
 class NavigateToGoalClient(Node):
     def __init__(self):
         super().__init__('navigate_to_goal_client')

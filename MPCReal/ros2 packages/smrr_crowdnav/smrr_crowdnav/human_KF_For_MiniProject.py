@@ -9,6 +9,9 @@ from builtin_interfaces.msg import Duration  # Import Duration for setting lifet
 from smrr_interfaces.msg import Entities
 from std_msgs.msg import Float64MultiArray
 
+### This is a copy of HumanKF node 
+### This can additionally send seperate x,y vx, vy theta of one human to visualize data in rqt for the mini project
+
 class HumanKF(Node):
     def __init__(self):
         super().__init__('Human_KF_node')
