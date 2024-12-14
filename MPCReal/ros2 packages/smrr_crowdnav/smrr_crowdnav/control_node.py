@@ -154,21 +154,18 @@ class CrowdNavMPCNode(Node):
 
 
     async def execute_callback(self, goal_handle):
-        self.get_logger().info('Executing navigation to goal')
+        #self.get_logger().info('Executing navigation to goal')
 
         feedback_msg = NavigateToGoal.Feedback()        
         self.finish = False
 
-
-        print("Test1")
         # Loop until the goal is reached or canceled
         while rclpy.ok() and self.finish==False:
             #self.publish_commands()
-            self.get_logger().info("Entering while loop iteration")
+            #self.get_logger().info("Entering while loop iteration")
             dist_to_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.final_goal))
 
             feedback_msg.distance_to_goal = dist_to_goal
-            print("Test2")
             goal_handle.publish_feedback(feedback_msg)
             print(f"feedback",feedback_msg)
 
@@ -178,7 +175,6 @@ class CrowdNavMPCNode(Node):
 
 
             if goal_handle.is_cancel_requested:
-                print("Test3")
                 goal_handle.canceled()
                 control = TwistStamped()
                 control.header.stamp = self.get_clock().now().to_msg()
@@ -191,12 +187,10 @@ class CrowdNavMPCNode(Node):
                 return NavigateToGoal.Result()
 
             if dist_to_goal < 0.25:
-                print("Test4")
                 goal_handle.succeed()
                 status = goal_handle.status
                 self.get_logger().info(f"Status {status}")
                 result = NavigateToGoal.Result()
-                print("Test5")
                 result.success = True
                 control = TwistStamped()
                 control.header.stamp = self.get_clock().now().to_msg()
@@ -205,7 +199,6 @@ class CrowdNavMPCNode(Node):
                 self.finish = True
                 self.action_publisher.publish(control)
                 if hasattr(self, 'timer') and self.timer is not None:
-                    print("timer off")
                     self.timer.cancel()
                     self.destroy_timer(self.timer)
                     self.timer = None
@@ -219,7 +212,6 @@ class CrowdNavMPCNode(Node):
 
         # Publish stop command if the goal was not succeeded
         control = TwistStamped()
-        print("Test7")
         control.header.stamp = self.get_clock().now().to_msg()
         control.twist.linear.x = 0.0
         control.twist.angular.z = 0.0
@@ -228,7 +220,6 @@ class CrowdNavMPCNode(Node):
 
         # Finalize with failed result
         goal_handle.succeed()
-        print("Test8")
         result = NavigateToGoal.Result()
         result.success = False
         self.cleanup_after_goal()
@@ -302,9 +293,8 @@ class CrowdNavMPCNode(Node):
         self.self_state.omega = msg.twist.twist.angular.z
 
     def publish_commands(self):
-        print("Publishing Commands")
         if self.self_state and self.human_states and self.ready:
-            print("global path", self.global_path)
+            #print("global path", self.global_path)
 
             if self.intermediate_goal == -1 :
                 self.intermediate_goal = 0
@@ -314,9 +304,9 @@ class CrowdNavMPCNode(Node):
             if (dist_to_int_goal <= 1.0) and (self.intermediate_goal != (self.num_int_goals + 1)):
                 self.intermediate_goal = self.intermediate_goal + 1
 
-            print("intermediate goal", self.intermediate_goal)
+            #print("intermediate goal", self.intermediate_goal)
 
-            print("distance_to_int_goal", dist_to_int_goal)
+            #print("distance_to_int_goal", dist_to_int_goal)
 
             self.publish_global_path(self.global_path,self.intermediate_goal)
 
@@ -346,13 +336,11 @@ class CrowdNavMPCNode(Node):
                     control.twist.linear.x = float(action[0])
                     control.twist.angular.z = float(action[1])
                     self.action_publisher.publish(control)
-                    print("Test12")
                     return
                 else:
                     control.twist.linear.x = 0.0
                     control.twist.angular.z = 0.0
                     self.action_publisher.publish(control)
-                    print("Test13")
                     return
 
     def publish_global_path(self, points, current_goal):
@@ -367,7 +355,8 @@ class CrowdNavMPCNode(Node):
         line_strip_marker.type = Marker.LINE_STRIP
         line_strip_marker.action = Marker.ADD
         line_strip_marker.scale.x = 0.05
-        line_strip_marker.color.r = 1.0  # Red color for the path
+        line_strip_marker.color.r = 1.0  
+        line_strip_marker.color.b = 1.0 
         line_strip_marker.color.a = 1.0
 
         # Add points to the line strip marker
@@ -416,7 +405,7 @@ class CrowdNavMPCNode(Node):
         line_strip_marker.id = 1000
         line_strip_marker.type = Marker.LINE_STRIP
         line_strip_marker.action = Marker.ADD
-        line_strip_marker.scale.x = 0.05
+        line_strip_marker.scale.x = 0.01
         line_strip_marker.color.r = 1.0
         line_strip_marker.color.a = 1.0
 
@@ -446,14 +435,14 @@ class CrowdNavMPCNode(Node):
                 point_marker.id = human_id * 1000 + time_step  # Unique ID for each point
                 point_marker.type = Marker.SPHERE
                 point_marker.action = Marker.ADD
-                point_marker.scale.x = 0.2  # Adjust scale for visibility
-                point_marker.scale.y = 0.2
-                point_marker.scale.z = 0.2
-                point_marker.color.r = 1.0  # Red color for visibility
-                point_marker.color.g = 0.0
+                point_marker.scale.x = 0.15  # Adjust scale for visibility
+                point_marker.scale.y = 0.15
+                point_marker.scale.z = 0.15
+                point_marker.color.r = 0.0  # Red color for visibility
+                point_marker.color.g = 0.1
                 point_marker.color.b = 0.0
                 point_marker.color.a = 1.0  # Fully opaque
-                point_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()  # Markers persist for 5 seconds
+                point_marker.lifetime = rclpy.time.Duration(seconds=0.5).to_msg()  # Markers persist for 5 seconds
 
                 # Set the position of the marker
                 point_marker.pose.position.x = float(position[0])
@@ -466,6 +455,9 @@ class CrowdNavMPCNode(Node):
         # Publish all points as separate markers
         #print(marker_array)
         self.human_prediction_publisher.publish(marker_array)
+
+    
+
 
 
 

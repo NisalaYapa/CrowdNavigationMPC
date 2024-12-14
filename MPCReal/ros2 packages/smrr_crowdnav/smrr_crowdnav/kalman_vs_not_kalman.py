@@ -81,8 +81,7 @@ class KalmanTest(Node):
         self.create_subscription(Entities, '/vel', self.human_velocity_callback, 10)
         self.create_subscription(Entities, '/laser_data_array_kf', self.human_position_kf_callback, 10)
         self.create_subscription(Entities, '/vel_kf', self.human_velocity_kf_callback, 10)
-        self.create_subscription(Entities, '/goals', self.human_goal_callback, 10)
-        self.create_subscription(Entities, '/goals', self.human_goal_kf_callback, 10)
+
         self.create_subscription(Odometry, '/diff_drive_controller/odom', self.robot_velocity_callback, 10)
 
         self.human_prediction_publisher_no_kf = self.create_publisher(MarkerArray, 'human_trajectories_no_kf', 10)
@@ -220,9 +219,9 @@ class KalmanTest(Node):
                 point_marker.id = human_id * 1000 + time_step  # Unique ID for each point
                 point_marker.type = Marker.SPHERE
                 point_marker.action = Marker.ADD
-                point_marker.scale.x = 0.2  # Adjust scale for visibility
-                point_marker.scale.y = 0.2
-                point_marker.scale.z = 0.2
+                point_marker.scale.x = 0.15  # Adjust scale for visibility
+                point_marker.scale.y = 0.15
+                point_marker.scale.z = 0.15
                 point_marker.color.r = 1.0  # Red color for visibility
                 point_marker.color.g = 0.0
                 point_marker.color.b = 1.0
@@ -256,9 +255,9 @@ class KalmanTest(Node):
                 point_marker.id = human_id * 1000 + time_step  # Unique ID for each point
                 point_marker.type = Marker.SPHERE
                 point_marker.action = Marker.ADD
-                point_marker.scale.x = 0.2  # Adjust scale for visibility
-                point_marker.scale.y = 0.2
-                point_marker.scale.z = 0.2
+                point_marker.scale.x = 0.15  # Adjust scale for visibility
+                point_marker.scale.y = 0.15
+                point_marker.scale.z = 0.15
                 point_marker.color.r = 0.0  # Red color for visibility
                 point_marker.color.g = 0.0
                 point_marker.color.b = 1.0

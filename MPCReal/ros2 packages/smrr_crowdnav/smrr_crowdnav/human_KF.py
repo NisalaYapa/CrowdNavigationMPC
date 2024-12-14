@@ -174,14 +174,14 @@ class HumanKF(Node):
             marker.header.stamp = self.get_clock().now().to_msg()
             marker.ns = "filtered_human_positions"
             marker.id = human_id
-            marker.type = Marker.SPHERE
+            marker.type = Marker.CYLINDER
             marker.action = Marker.ADD
             marker.pose.position.x = state[0]  # x position
             marker.pose.position.y = state[1]  # y position
             marker.pose.position.z = 0.0  # z position (assumed flat plane)
             marker.scale.x = 0.2  # Sphere size in x
             marker.scale.y = 0.2  # Sphere size in y
-            marker.scale.z = 0.2  # Sphere size in z
+            marker.scale.z = 0.01  # Sphere size in z
             marker.color.a = 1.0  # Transparency
             marker.color.r = 0.0  # Red
             marker.color.g = 1.0  # Green
@@ -258,7 +258,7 @@ class HumanKF(Node):
             # Scale the arrow: length proportional to velocity magnitude
             marker.scale.x = velocity_magnitude  # Arrow length
             marker.scale.y = 0.05  # Arrow thickness
-            marker.scale.z = 0.05 # Arrow thickness
+            marker.scale.z = 0.01 # Arrow thickness
 
             # Set the color of the arrow
             marker.color.a = 1.0  # Transparency
@@ -284,14 +284,14 @@ class HumanKF(Node):
             marker.header.stamp = self.get_clock().now().to_msg()
             marker.ns = "filtered_human_velocities"
             marker.id = human_id
-            marker.type = Marker.SPHERE
+            marker.type = Marker.CYLINDER
             marker.action = Marker.ADD
             marker.pose.position.x = state[0]  # x position
             marker.pose.position.y = state[1]  # y position
             marker.pose.position.z = 0.0  # z position (assumed flat plane)
             marker.scale.x = 0.2  # Sphere size in x
             marker.scale.y = 0.2  # Sphere size in y
-            marker.scale.z = 0.2  # Sphere size in z
+            marker.scale.z = 0.01 # Sphere size in z
             marker.color.a = 1.0  # Transparency
             marker.color.r = 1.0  # Red
             marker.color.g = 0.0  # Green
@@ -340,7 +340,7 @@ class HumanKF(Node):
             # Scale the arrow: length proportional to velocity magnitude
             marker.scale.x = velocity_magnitude # Arrow length
             marker.scale.y = 0.05  # Arrow thickness
-            marker.scale.z = 0.05 # Arrow thickness
+            marker.scale.z = 0.01 # Arrow thickness
 
             # Set the color of the arrow
             marker.color.a = 1.0  # Transparency

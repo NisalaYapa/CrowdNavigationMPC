@@ -52,9 +52,6 @@ class NewMPCReal():
         nx_r = 3  # Robot state: [px, py, theta]
         nu_r = 2  # Robot control inputs: [v, omega]
         
-        # Initial state and current velocity
-        #x0 = [robot_state.px, robot_state.py, robot_state.theta] # Initial robot state
-        
         # Concatenate vx and vy into a vector, then compute the squared sum
         u_current = cs.vertcat(cs.sumsqr(cs.vertcat(robot_state.vx, robot_state.vy)), robot_state.omega)
 
