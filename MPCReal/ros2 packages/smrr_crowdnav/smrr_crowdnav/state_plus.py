@@ -1,3 +1,6 @@
+### State class for the crowd navigation agent representation
+
+
 class FullState(object):
     def __init__(self, px, py, vx, vy, radius, gx, gy, v_pref, theta, omega=None):
         self.px = px

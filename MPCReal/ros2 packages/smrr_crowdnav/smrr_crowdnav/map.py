@@ -9,7 +9,9 @@ from tf2_ros import TransformListener, Buffer
 from sklearn.cluster import AgglomerativeClustering
 import tf_transformations
 
-#line Extraction
+### This node can convert lidar readings to line segments
+### Need to create a node to filter out humans from lidar data and send static obs lidar reading to this node.
+
 class LidarLineExtraction(Node):
     def __init__(self):
         super().__init__('lidar_line_extraction')
