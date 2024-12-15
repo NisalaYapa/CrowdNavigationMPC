@@ -4,16 +4,19 @@ import logging
 from .orca_plus_All import ORCAPlusAll
 from .state_plus import FullState, FullyObservableJointState
 
+### This is a copy of NewMPCReal to test human path prediction
+### To reduce computational code it is not solving the MPC
+### This is just used for getting human path prediction by calling ORCA
 
 class NewMPCReal():
     def __init__(self):
         
         # Environment-related variables
-        self.time_step = 0.6 # Time step for MPC
+        self.time_step = 1 # Time step for MPC
         self.human_max_speed = 1
         
         # MPC-related variables
-        self.horizon = 12# Fixed time horizon
+        self.horizon = 5# Fixed time horizon
         
 
     def predict(self, env_state):
@@ -31,8 +34,8 @@ class NewMPCReal():
                                       gx=robot_state.gx,  gy=robot_state.gy, v_pref=robot_state.v_pref,  theta=robot_state.theta,  omega=robot_state.omega)
         
         for hum in env_state.human_states:               
-            gx = 0 # hum.px + hum.vx * 2 
-            gy = 0 # hum.py + hum.vy * 2 # need to remove when the goal prediction is fully completed
+            gx = 5 # hum.px + hum.vx * 2 
+            gy = 5 # hum.py + hum.vy * 2 # need to remove when the goal prediction is fully completed
             hum_state = FullState(px=hum.px, py=hum.py, vx=hum.vx, vy=hum.vy, 
                                   gx=gx, gy=gy, v_pref=self.human_max_speed, 
                                   theta=np.arctan2(hum.vy, hum.vx), radius=hum.radius, omega=None)                    
@@ -62,13 +65,7 @@ class NewMPCReal():
                 future_human_states[i][t][1] = float(predicted_human_poses[0][t][i+1][1]) # Y-coordinate
 
 
-
-        #logging.info(f"Generated action: {action}")
-        return future_human_states# Return the optimal control action                #next_state = states[t] + cs.vertcat(
-                    #u_t[0] * (cs.sin(states[t][2] - u_t[1] * self.time_step) - cs.sin(states[t][2])) / (u_t[1] + epsilon),
-                    #u_t[0] * (-cs.cos(states[t][2] + u_t[1] * self.time_step) + cs.cos(states[t][2])) / (u_t[1] + epsilon),
-                    #u_t[1] * self.time_step
-                #)
+        return future_human_states# Return the optimal control action      
 
 
     

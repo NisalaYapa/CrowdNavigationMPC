@@ -179,7 +179,6 @@ class KalmanTest(Node):
             
 
     def publish_commands(self):
-        print("publishing test")
         # Predict and publish control commands
         if self.self_state and self.human_states and self.ready:
             env_state = EnvState(self.self_state, self.human_states if self.human_states else [])
@@ -192,7 +191,6 @@ class KalmanTest(Node):
 
 
     def publish_commands_kf(self):
-        print("publishing test kf")
         # Predict and publish control commands
         if self.self_state and self.human_states_kf and self.ready:
             env_state = EnvState(self.self_state, self.human_states_kf if self.human_states_kf else [])
@@ -210,74 +208,114 @@ class KalmanTest(Node):
         
         # Loop through each human trajectory
         for human_id, human in enumerate(human_next_states):
-            for time_step, position in enumerate(human):
-                # Create a marker for each individual point
+            # Create a line strip marker for the trajectory
+            line_marker = Marker()
+            line_marker.header.frame_id = "map"
+            line_marker.header.stamp = self.get_clock().now().to_msg()
+            line_marker.ns = f"human_{human_id}_trajectory"
+            line_marker.id = human_id  # Unique ID for each human's trajectory
+            line_marker.type = Marker.LINE_STRIP  # Create a line strip
+            line_marker.action = Marker.ADD
+            line_marker.scale.x = 0.02 # Thickness of the line
+            line_marker.color.r = 1.0  # Red color for visibility
+            line_marker.color.g = 0.0
+            line_marker.color.b = 1.0
+            line_marker.color.a = 1.0  # Fully opaque
+            line_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()  # Line persists for 5 seconds
+
+            # Add each position in the human trajectory as a point in the line strip
+            for position in human:
+                point = Point()
+                point.x = float(position[0])
+                point.y = float(position[1])
+                point.z = 0.0
+                line_marker.points.append(point)
+
+                # Create a sphere marker for this point
                 point_marker = Marker()
                 point_marker.header.frame_id = "map"
                 point_marker.header.stamp = self.get_clock().now().to_msg()
-                point_marker.ns = f"human_{human_id}_point_{time_step}"
-                point_marker.id = human_id * 1000 + time_step  # Unique ID for each point
+                point_marker.ns = f"human_{human_id}_points"
+                point_marker.id = human_id * 1000 + len(line_marker.points)  # Unique ID for each point
                 point_marker.type = Marker.SPHERE
                 point_marker.action = Marker.ADD
-                point_marker.scale.x = 0.15  # Adjust scale for visibility
-                point_marker.scale.y = 0.15
-                point_marker.scale.z = 0.15
-                point_marker.color.r = 1.0  # Red color for visibility
+                point_marker.scale.x = 0.12  # Adjust scale for visibility
+                point_marker.scale.y = 0.12
+                point_marker.scale.z = 0.12
+                point_marker.color.r = 1.0  # Blue color for points
                 point_marker.color.g = 0.0
-                point_marker.color.b = 1.0
+                point_marker.color.b = 0.0
                 point_marker.color.a = 1.0  # Fully opaque
-                point_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()  # Markers persist for 5 seconds
+                point_marker.pose.position.x = point.x
+                point_marker.pose.position.y = point.y
+                point_marker.pose.position.z = point.z
+                point_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()
 
-                # Set the position of the marker
-                point_marker.pose.position.x = float(position[0])
-                point_marker.pose.position.y = float(position[1])
-                point_marker.pose.position.z = 0.0
-
-                # Add each point as a separate marker in the MarkerArray
+                # Add the point marker to the MarkerArray
                 marker_array.markers.append(point_marker)
 
-        # Publish all points as separate markers
-        #print(marker_array)
-        self.human_prediction_publisher_no_kf.publish(marker_array)
+            # Add the line strip marker to the MarkerArray
+            marker_array.markers.append(line_marker)
 
+        # Publish all trajectories as separate line and point markers
+        self.human_prediction_publisher_no_kf.publish(marker_array)
 
     def publish_human_next_states_kf(self, human_next_states_kf):
         marker_array = MarkerArray()
         
         # Loop through each human trajectory
         for human_id, human in enumerate(human_next_states_kf):
-            for time_step, position in enumerate(human):
-                # Create a marker for each individual point
+            # Create a line strip marker for the trajectory
+            line_marker = Marker()
+            line_marker.header.frame_id = "map"
+            line_marker.header.stamp = self.get_clock().now().to_msg()
+            line_marker.ns = f"human_{human_id}_trajectory"
+            line_marker.id = human_id  # Unique ID for each human's trajectory
+            line_marker.type = Marker.LINE_STRIP  # Create a line strip
+            line_marker.action = Marker.ADD
+            line_marker.scale.x = 0.02 # Thickness of the line
+            line_marker.color.r = 0.0  # Red color for visibility
+            line_marker.color.g = 1.0
+            line_marker.color.b = 1.0
+            line_marker.color.a = 1.0  # Fully opaque
+            line_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()  # Line persists for 5 seconds
+
+            # Add each position in the human trajectory as a point in the line strip
+            for position in human:
+                point = Point()
+                point.x = float(position[0])
+                point.y = float(position[1])
+                point.z = 0.0
+                line_marker.points.append(point)
+
+                # Create a sphere marker for this point
                 point_marker = Marker()
                 point_marker.header.frame_id = "map"
                 point_marker.header.stamp = self.get_clock().now().to_msg()
-                point_marker.ns = f"human_{human_id}_point_{time_step}"
-                point_marker.id = human_id * 1000 + time_step  # Unique ID for each point
+                point_marker.ns = f"human_{human_id}_points"
+                point_marker.id = human_id * 1000 + len(line_marker.points)  # Unique ID for each point
                 point_marker.type = Marker.SPHERE
                 point_marker.action = Marker.ADD
-                point_marker.scale.x = 0.15  # Adjust scale for visibility
-                point_marker.scale.y = 0.15
-                point_marker.scale.z = 0.15
-                point_marker.color.r = 0.0  # Red color for visibility
-                point_marker.color.g = 0.0
-                point_marker.color.b = 1.0
+                point_marker.scale.x = 0.12  # Adjust scale for visibility
+                point_marker.scale.y = 0.12
+                point_marker.scale.z = 0.12
+                point_marker.color.r = 0.0  # Blue color for points
+                point_marker.color.g = 1.0
+                point_marker.color.b = 0.0
                 point_marker.color.a = 1.0  # Fully opaque
-                point_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()  # Markers persist for 5 seconds
+                point_marker.pose.position.x = point.x
+                point_marker.pose.position.y = point.y
+                point_marker.pose.position.z = point.z
+                point_marker.lifetime = rclpy.time.Duration(seconds=5).to_msg()
 
-                # Set the position of the marker
-                point_marker.pose.position.x = float(position[0])
-                point_marker.pose.position.y = float(position[1])
-                point_marker.pose.position.z = 0.0
-
-                # Add each point as a separate marker in the MarkerArray
+                # Add the point marker to the MarkerArray
                 marker_array.markers.append(point_marker)
 
-        # Publish all points as separate markers
-        #print(marker_array)
+            # Add the line strip marker to the MarkerArray
+            marker_array.markers.append(line_marker)
+
+        # Publish all trajectories as separate line and point markers
         self.human_prediction_publisher_kf.publish(marker_array)
-
-
-
 
 
     

@@ -405,7 +405,7 @@ class CrowdNavMPCNode(Node):
         line_strip_marker.id = 1000
         line_strip_marker.type = Marker.LINE_STRIP
         line_strip_marker.action = Marker.ADD
-        line_strip_marker.scale.x = 0.01
+        line_strip_marker.scale.x = 0.03
         line_strip_marker.color.r = 1.0
         line_strip_marker.color.a = 1.0
 
@@ -435,11 +435,11 @@ class CrowdNavMPCNode(Node):
                 point_marker.id = human_id * 1000 + time_step  # Unique ID for each point
                 point_marker.type = Marker.SPHERE
                 point_marker.action = Marker.ADD
-                point_marker.scale.x = 0.15  # Adjust scale for visibility
-                point_marker.scale.y = 0.15
-                point_marker.scale.z = 0.15
+                point_marker.scale.x = 0.10  # Adjust scale for visibility
+                point_marker.scale.y = 0.10
+                point_marker.scale.z = 0.10
                 point_marker.color.r = 0.0  # Red color for visibility
-                point_marker.color.g = 0.1
+                point_marker.color.g = 1.0
                 point_marker.color.b = 0.0
                 point_marker.color.a = 1.0  # Fully opaque
                 point_marker.lifetime = rclpy.time.Duration(seconds=0.5).to_msg()  # Markers persist for 5 seconds
