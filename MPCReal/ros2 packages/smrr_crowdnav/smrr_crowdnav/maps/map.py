@@ -3,6 +3,13 @@ import numpy as np
 import yaml
 import matplotlib.pyplot as plt
 
+#### This is for annotate the given map (using .pgm and .yaml) to represent obstacles as lines.
+### After running this code, it will appear a plot with dots
+### first touch - stating point of the line
+### second touch - end of the line
+### to save the lines press "s". this will update the .txt file (to use later in combined_lines_publisher.py)
+
+
 # Load the map image
 map_image = cv2.imread('my_map.pgm', cv2.IMREAD_GRAYSCALE)
 
