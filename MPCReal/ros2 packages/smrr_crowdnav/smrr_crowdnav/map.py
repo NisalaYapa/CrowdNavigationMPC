@@ -8,6 +8,7 @@ import numpy as np
 from tf2_ros import TransformListener, Buffer
 from sklearn.cluster import AgglomerativeClustering
 import tf_transformations
+from smrr_interfaces.msg import Entities
 
 ### This node can convert lidar readings to line segments
 ### Need to create a node to filter out humans from lidar data and send static obs lidar reading to this node.
@@ -27,6 +28,7 @@ class LidarLineExtraction(Node):
 
         # Create a publisher for visualization markers
         self.marker_publisher = self.create_publisher(Marker, 'line_segments', 10)
+        self.line_publisher = self.create_publisher(Entities, 'local_lines_array', 10)
 
         # Subscribe to the /scan topic
         self.scan_subscriber = self.create_subscription(
@@ -155,11 +157,26 @@ class LidarLineExtraction(Node):
 
     def merge_clusters(self, clusters):
         merged_lines = []
+
+        line_array = Entities()
+
+        line_array.count       = 0
+        line_array.x           = []
+        line_array.y           = []
+        
         for cluster in clusters:
             if self.is_valid_cluster(cluster):
                 simplified_points = self.rdp(cluster, self.distance_threshold)
                 if len(simplified_points) >= 2:
                     merged_lines.append(simplified_points)  # Append the entire simplified line segment
+                    line_array.x.append(simplified_points[0][0])
+                    line_array.x.append(simplified_points[1][0])
+                    line_array.y.append(simplified_points[0][1])
+                    line_array.y.append(simplified_points[1][1])
+                    line_array.count +=  1
+        print(line_array.count)
+        self.line_publisher.publish(line_array)
+
         return merged_lines
 
     def is_valid_cluster(self, cluster):

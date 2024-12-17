@@ -31,6 +31,7 @@ setup(
             'control_node_laser = smrr_crowdnav.control_node_laser:main',  
             'test_publisher = smrr_crowdnav.test_publisher:main',
             'map_scan = smrr_crowdnav.map:main',
+            'combine_lines = smrr_crowdnav.lines_publisher:main'
         ],
     },
 )
