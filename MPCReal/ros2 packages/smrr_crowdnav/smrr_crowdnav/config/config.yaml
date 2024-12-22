@@ -3,3 +3,7 @@ NewMPCReal:
   human_max_speed: 1.0  # Maximum speed of humans
   horizon: 15          # Time horizon for MPC
 
+
+ControlNode:
+  Intermediate_Goals: 3
+

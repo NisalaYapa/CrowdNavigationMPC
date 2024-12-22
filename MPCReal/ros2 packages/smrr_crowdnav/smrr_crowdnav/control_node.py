@@ -20,6 +20,9 @@ from visualization_msgs.msg import Marker, MarkerArray
 from action_msgs.msg import GoalStatus
 import asyncio
 from smrr_interfaces.action import NavigateToGoal# Custom action file
+import yaml
+import os
+
 
 
 ### This is the main version of control node (action server)
@@ -71,6 +74,28 @@ class CrowdNavMPCNode(Node):
     def __init__(self):
         super().__init__('crowdnav_mpc_node')
 
+        # Load the YAML config file
+        package_path = os.path.dirname(__file__)  # Current file's directory
+        config_path = os.path.join(package_path,'config', 'config.yaml')
+        
+        with open(config_path, 'r') as file:
+            configs = yaml.safe_load(file)
+        
+        # Get parameters for this class
+        node_name = "ControlNode"  # Define your node's name
+        node_configs = configs.get(node_name, {})
+
+        # Set class attributes for each parameter
+        for key, value in node_configs.items():
+            setattr(self, key, value)  # Dynamically add attributes
+
+        # Log the loaded parameters
+        int_goals = getattr(self, 'Intermediate_Goals', 0)  # Default to 1 if not defined
+        print(f"Loaded Intermediate_goals size: {int_goals}")
+
+        self.int_goals = int_goals
+        
+
         # Initialize MPC
         self.policy = NewMPCReal()
         self.self_state = None
@@ -94,10 +119,12 @@ class CrowdNavMPCNode(Node):
         self.get_logger().info("Node initiated")
 
         self.global_path = []
-        self.num_int_goals = 2
+        
         self.intermediate_goal = -1
         self.final_gx = 0
         self.final_gy = 0
+
+
 
         #self.timer = self.create_timer(0.7, self.publish_commands)
         self.transform = GeometricTransformations(self)
