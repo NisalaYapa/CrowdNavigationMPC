@@ -166,10 +166,10 @@ class CrowdNavMPCNode(Node):
         self.final_goal = (self.final_gx, self.final_gy)
         self.intermediate_goal = -1
 
-        for i in range(self.num_int_goals + 2):
+        for i in range(self.int_goals + 2):
             self.global_path.append((
-                self.self_state.px + i * (self.final_gx - self.self_state.px) / (self.num_int_goals + 1),
-                self.self_state.py + i * (self.final_gy - self.self_state.py) / (self.num_int_goals + 1)
+                self.self_state.px + i * (self.final_gx - self.self_state.px) / (self.int_goals + 1),
+                self.self_state.py + i * (self.final_gy - self.self_state.py) / (self.int_goals + 1)
             ))
 
         if not hasattr(self, 'timer_initialized') or not self.timer_initialized:
@@ -320,6 +320,7 @@ class CrowdNavMPCNode(Node):
         self.self_state.omega = msg.twist.twist.angular.z
 
     def publish_commands(self):
+        print("publishing Commands")
         if self.self_state and self.human_states and self.ready:
             #print("global path", self.global_path)
 
@@ -328,7 +329,7 @@ class CrowdNavMPCNode(Node):
 
             dist_to_int_goal = np.linalg.norm(np.array(self.self_state.position) - np.array(self.global_path[self.intermediate_goal]))
 
-            if (dist_to_int_goal <= 1.0) and (self.intermediate_goal != (self.num_int_goals + 1)):
+            if (dist_to_int_goal <= 1.0) and (self.intermediate_goal != (self.int_goals + 1)):
                 self.intermediate_goal = self.intermediate_goal + 1
 
             #print("intermediate goal", self.intermediate_goal)
