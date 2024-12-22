@@ -139,7 +139,6 @@ class NewMPCReal():
             for t in range(self.horizon):
                 dist_to_goal = cs.sumsqr(X_pred[t][:2] - goal_pos)  # Distance to the goal
                 angle_to_goal = np.arctan2((goal_pos-X_pred[t][:2])[1],(goal_pos-X_pred[t][:2])[0])
-
                 #cost += cs.sumsqr(angle_to_goal-X_pred[t][2])*Q_orientation
 
                 # Penalize control inputs (mainly smoothness in omega)
@@ -148,10 +147,8 @@ class NewMPCReal():
                     control_smooth = cs.sumsqr(U[1, t])
                     control_pref = cs.sumsqr(U[0, t] - 0.5)  # Prefer certain velocity
                 else:
-                    control_smooth = cs.sumsqr(U[1, t])
-                
+                    control_smooth = cs.sumsqr(U[1, t])                
                     #current_velocity = cs.vertcat(robot_state.vx, robot_state.vy)
-
                     control_pref = cs.sumsqr(U[0, t] - 0.5)
                 
                 

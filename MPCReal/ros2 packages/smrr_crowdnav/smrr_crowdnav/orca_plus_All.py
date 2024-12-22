@@ -13,31 +13,31 @@ class ORCAPlusAll(ORCA):
 
     def __init__(self):
         super().__init__()
+        self.time_step = 0.6
 
-    def configure(self, config, section='orca_plus'):
+    # def configure(self, config, section='orca_plus'):
     
-        self.time_step = 1 # Default time step
-        try:
-            self.time_step = config.getfloat('env', 'time_step')
-        except:
-            logging.warn("[ORCA_PLUS POLICY] problem with policy config")
-        # self.neighbor_dist = config.getfloat('human', 'neighbor_dist')
-        # self.max_neighbors = config.getint('orca', 'max_neighbors')
-        # self.time_horizon = config.getfloat('orca', 'time_horizon')
-        # self.time_horizon_obst = config.getfloat('orca', 'time_horizon_obst')
-        self.radius = config.getfloat(section, 'radius')
-        self.safety_space = config.getfloat(section, 'safety_space')
-        # self.max_speed = config.getfloat(section, 'safety_space')
-        return
+    #     self.time_step = 1 # Default time step
+    #     try:
+    #         self.time_step = config.getfloat('env', 'time_step')
+    #     except:
+    #         logging.warn("[ORCA_PLUS POLICY] problem with policy config")
+    #     # self.neighbor_dist = config.getfloat('human', 'neighbor_dist')
+    #     # self.max_neighbors = config.getint('orca', 'max_neighbors')
+    #     # self.time_horizon = config.getfloat('orca', 'time_horizon')
+    #     # self.time_horizon_obst = config.getfloat('orca', 'time_horizon_obst')
+    #     self.radius = config.getfloat(section, 'radius')
+    #     self.safety_space = config.getfloat(section, 'safety_space')
+    #     # self.max_speed = config.getfloat(section, 'safety_space')
+    #     return
 
-    
+
         
     def predictAll(self, state):
         
         """
         Function to get action array for robot and Humans using ORCA
         """
-        self.time_step = 1
         
         self_state = state.self_state
         params = self.neighbor_dist, self.max_neighbors, self.time_horizon, self.time_horizon_obst
