@@ -5,6 +5,8 @@ from rclpy.action import ActionClient
 from rclpy.node import Node
 from smrr_interfaces.action import NavigateToGoal
 import argparse
+import yaml
+import os
 
 
 ### This is the action client for control nodes (action servers)
@@ -19,6 +21,28 @@ class NavigateToGoalClient(Node):
 
         # Store the goal handle for future use (cancellation, etc.)
         self.goal_handle = None
+
+        # Load the YAML config file
+        package_path = os.path.dirname(__file__)  # Current file's directory
+        config_path = os.path.join(package_path,'config', 'scenario_config.yaml')
+        
+        with open(config_path, 'r') as file:
+            configs = yaml.safe_load(file)
+        
+        # Get parameters for this class
+        node_name = "GoalClient"  # Define your node's name
+        node_configs = configs.get(node_name, {})
+
+        # Set class attributes for each parameter
+        for key, value in node_configs.items():
+            setattr(self, key, value)  # Dynamically add attributes
+
+        # Log the loaded parameters
+        goal = getattr(self, 'goal', (0.0,0.0))  # Default to 1 if not defined
+        print(f"Loaded goal: {goal}")
+        
+        # Environment-related variables
+        self.goal = goal        
 
     def send_goal(self, x, y):
         """Send a goal to the action server."""
@@ -71,17 +95,22 @@ def main(args=None):
     """Main function to run the action client."""
     rclpy.init(args=args)
 
-    # Parse command-line arguments
-    parser = argparse.ArgumentParser(description="Send goal coordinates to the NavigateToGoal action server.")
-    parser.add_argument('--x', type=float, required=True, help='Goal x coordinate')
-    parser.add_argument('--y', type=float, required=True, help='Goal y coordinate')
-    args = parser.parse_args()
-
     # Create the action client node
     action_client = NavigateToGoalClient()
-    
+
+    # Validate and unpack the goal
+    try:
+        goal_x, goal_y = action_client.goal  # Attempt unpacking
+        if not (isinstance(goal_x, (int, float)) and isinstance(goal_y, (int, float))):
+            raise ValueError("Goal coordinates must be numeric.")
+    except (TypeError, ValueError) as e:
+        action_client.get_logger().error(
+            f"Invalid goal format: {action_client.goal}. Expected a tuple or list with two numeric elements. Error: {e}"
+        )
+        return
+
     # Send goal and wait until it’s completed
-    action_client.send_goal(args.x, args.y)
+    action_client.send_goal(goal_x, goal_y)
 
     try:
         rclpy.spin(action_client)
@@ -90,6 +119,7 @@ def main(args=None):
     finally:
         action_client.destroy_node()
         rclpy.shutdown()
+
 
 
 if __name__ == '__main__':

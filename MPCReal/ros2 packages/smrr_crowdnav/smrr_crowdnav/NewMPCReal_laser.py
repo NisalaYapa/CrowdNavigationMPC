@@ -64,8 +64,8 @@ class NewMPCReal():
         state = FullyObservableJointState(self_state=robot_full_state, human_states=human_states, static_obs=env_state.static_obs)
             
         # Step 1: Predict future human positions over the time horizon using ORCA
-        orca_policy = ORCAPlusAll()
-        predicted_human_poses = orca_policy.predictAllForTimeHorizon(state, self.horizon)       
+        orca_policy = ORCAPlusAll(self.time_step, self.horizon)
+        predicted_human_poses = orca_policy.predictAllForTimeHorizon(state)     
         #logging.info(f"predict {predicted_human_poses}")
 
         # Step 2: Setup MPC using CasADi

@@ -14,20 +14,46 @@ from visualization_msgs.msg import Marker, MarkerArray
 from smrr_interfaces.msg import Entities
 from .NewMPCReal import NewMPCReal
 from .include.transform import GeometricTransformations
-
+import yaml
+import os
 
 
 # Define SelfState class
 class SelfState:
     def __init__(self, px, py, vx, vy, theta, omega, gx=5, gy=-5, radius=0.2, v_pref=0.5):
+
+        # Load the YAML config file
+        package_path = os.path.dirname(__file__)  # Current file's directory
+        config_path = os.path.join(package_path,'config', 'scenario_config.yaml')
+        
+        with open(config_path, 'r') as file:
+            configs = yaml.safe_load(file)
+        
+        # Get parameters for this class
+        node_name = "GoalClient"  # Define your node's name
+        node_configs = configs.get(node_name, {})
+
+        # Set class attributes for each parameter
+        for key, value in node_configs.items():
+            setattr(self, key, value)  # Dynamically add attributes
+
+        # Log the loaded parameters
+        goal = getattr(self, 'goal', (0.0,0.0))  # Default to 1 if not defined
+        print(f"Loaded goal: {goal}")
+        
+        # Environment-related variables    
+        goal_x = goal[0]
+        goal_y = goal[1]
+
+
         self.px = px
         self.py = py
         self.vx = vx
         self.vy = vy
         self.theta = theta
         self.omega = omega
-        self.gx = gx
-        self.gy = gy
+        self.gx = goal_x
+        self.gy = goal_y
         self.radius = radius
         self.v_pref = v_pref
         self.position = (self.px, self.py)
