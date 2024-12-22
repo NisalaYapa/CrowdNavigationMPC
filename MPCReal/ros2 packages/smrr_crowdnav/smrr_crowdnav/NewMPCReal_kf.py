@@ -7,7 +7,6 @@ import rclpy
 from rclpy.node import Node
 import yaml
 import os
-from ament_index_python.packages import get_package_share_directory
 
 ### This is a copy of NewMPCReal to test human path prediction
 ### To reduce computational code it is not solving the MPC
@@ -40,7 +39,7 @@ class NewMPCReal():
         self.human_max_speed = getattr(self, 'human_max_speed', 0.5)  # Default to 1.0
         
         # MPC-related variables
-        self.horizon = getattr(self, 'horizon', 15)  # Default to 15
+        self.horizon = getattr(self, 'horizon', 5)  # Default to 15
         
 
     def predict(self, env_state):
@@ -71,8 +70,8 @@ class NewMPCReal():
         state = FullyObservableJointState(self_state=robot_full_state, human_states=human_states, static_obs=env_state.static_obs)
             
         # Step 1: Predict future human positions over the time horizon using ORCA
-        orca_policy = ORCAPlusAll()
-        predicted_human_poses = orca_policy.predictAllForTimeHorizon(state, self.horizon)       
+        orca_policy = ORCAPlusAll(self.time_step, self.horizon)
+        predicted_human_poses = orca_policy.predictAllForTimeHorizon(state)       
         #logging.info(f"predict {predicted_human_poses}")
 
         

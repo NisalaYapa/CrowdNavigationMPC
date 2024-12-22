@@ -5,17 +5,40 @@ import numpy as np
 import logging
 from .orca_plus_All import ORCAPlusAll
 from .state_plus import FullState, FullyObservableJointState
+import yaml
+import os
+from ament_index_python.packages import get_package_share_directory
 
 
 class NewMPCReal():
     def __init__(self):
+
+        # Load the YAML config file
+        package_path = os.path.dirname(__file__)  # Current file's directory
+        config_path = os.path.join(package_path,'config', 'config.yaml')
+        
+        with open(config_path, 'r') as file:
+            configs = yaml.safe_load(file)
+        
+        # Get parameters for this class
+        node_name = "NewMPCReal"  # Define your node's name
+        node_configs = configs.get(node_name, {})
+
+        # Set class attributes for each parameter
+        for key, value in node_configs.items():
+            setattr(self, key, value)  # Dynamically add attributes
+
+        # Log the loaded parameters
+        time_step = getattr(self, 'time_step', 1)  # Default to 1 if not defined
+        print(f"Loaded time_step size: {time_step}")
         
         # Environment-related variables
-        self.time_step = 0.6 # Time step for MPC
-        self.human_max_speed = 1
+        self.time_step = time_step
+        self.human_max_speed = getattr(self, 'human_max_speed', 0.5)  # Default to 1.0
         
         # MPC-related variables
-        self.horizon = 7# Fixed time horizon
+        self.horizon = getattr(self, 'horizon', 5)  # Default to 15
+        
         
 
     def predict(self, env_state):

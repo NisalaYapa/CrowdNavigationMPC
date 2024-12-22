@@ -3,6 +3,8 @@ import numpy as np
 from .orca import ORCA
 import rvo2
 from .state_plus import *
+import yaml
+import os
 
 
 class ORCAPlusAll(ORCA):
@@ -11,25 +13,12 @@ class ORCAPlusAll(ORCA):
     This placeholder is a copy of crowd_sim_plus.envs.policy.linear
     """
 
-    def __init__(self):
-        super().__init__()
-        self.time_step = 0.6
-
-    # def configure(self, config, section='orca_plus'):
-    
-    #     self.time_step = 1 # Default time step
-    #     try:
-    #         self.time_step = config.getfloat('env', 'time_step')
-    #     except:
-    #         logging.warn("[ORCA_PLUS POLICY] problem with policy config")
-    #     # self.neighbor_dist = config.getfloat('human', 'neighbor_dist')
-    #     # self.max_neighbors = config.getint('orca', 'max_neighbors')
-    #     # self.time_horizon = config.getfloat('orca', 'time_horizon')
-    #     # self.time_horizon_obst = config.getfloat('orca', 'time_horizon_obst')
-    #     self.radius = config.getfloat(section, 'radius')
-    #     self.safety_space = config.getfloat(section, 'safety_space')
-    #     # self.max_speed = config.getfloat(section, 'safety_space')
-    #     return
+    def __init__(self, time_step, time_horizon):
+        super().__init__()        
+        # Environment-related variables
+        self.time_step = time_step
+        print(self.time_step)
+        self.time_horizon = time_horizon
 
 
         
@@ -107,7 +96,7 @@ class ORCAPlusAll(ORCA):
 
         return action_array
         
-    def predictAllForTimeHorizon(self, state, time_horizon):
+    def predictAllForTimeHorizon(self, state):
         """
         Function to get action array for robot and Humans using ORCA for all the time horizon.
         Outputs: Array(size(time_horizon, num_agents, state)) with format for the state ((self.px, self.py, self.vx, self.vy, self.radius))
@@ -148,7 +137,7 @@ class ORCAPlusAll(ORCA):
         
 
 
-        for t in range(time_horizon):
+        for t in range(self.time_horizon):
             # Get the actions for all agents at the current timestep using ORCA
             actions = self.predictAll(current_state)
             #logging.info(f"currentState {current_state.self_state.vx, current_state.self_state.vy}")
